@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO.Enumeration;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,7 +58,8 @@ namespace System.IO
                                                            NotifyFilters.LastAccess |
                                                            NotifyFilters.LastWrite |
                                                            NotifyFilters.Security |
-                                                           NotifyFilters.Size);
+                                                           NotifyFilters.Size |
+                                                           NotifyFilters.FollowSymlinks);
 
 #if DEBUG
         static FileSystemWatcher()

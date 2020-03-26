@@ -42,5 +42,7 @@ namespace System.IO
         ///    The security settings of the file or folder.
         /// </devdoc>
         Security = 0x00000100,
+
+        FollowSymlinks = 0x02000000,
     }
 }
