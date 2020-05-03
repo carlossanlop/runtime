@@ -34,7 +34,7 @@ namespace System.IO
 
             // We would ideally use realpath to do this, but it resolves symlinks, requires that the file actually exist,
             // and turns it into a full path, which we only want if fullCheck is true.
-            string collapsedString = PathInternal.RemoveRelativeSegments(path, PathInternal.GetRootLength(path));
+            string collapsedString = Path.RemoveRedundantSegments(path);
 
             Debug.Assert(collapsedString.Length < path.Length || collapsedString.ToString() == path,
                 "Either we've removed characters, or the string should be unmodified from the input path.");
@@ -122,13 +122,13 @@ namespace System.IO
         public static string? GetPathRoot(string? path)
         {
             if (PathInternal.IsEffectivelyEmpty(path)) return null;
-
+            
             return IsPathRooted(path) ? PathInternal.DirectorySeparatorCharAsString : string.Empty;
         }
 
         public static ReadOnlySpan<char> GetPathRoot(ReadOnlySpan<char> path)
         {
-            return PathInternal.IsEffectivelyEmpty(path) && IsPathRooted(path) ? PathInternal.DirectorySeparatorCharAsString.AsSpan() : ReadOnlySpan<char>.Empty;
+            return IsPathRooted(path) ? PathInternal.DirectorySeparatorCharAsString.AsSpan() : ReadOnlySpan<char>.Empty;
         }
 
         /// <summary>Gets whether the system is case-sensitive.</summary>

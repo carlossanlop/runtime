@@ -130,7 +130,7 @@ namespace System.IO
             // them properly. As such we need to manually remove segments and not use GetFullPath().
 
             return PathInternal.IsDevice(combinedPath.AsSpan())
-                ? PathInternal.RemoveRelativeSegments(combinedPath, PathInternal.GetRootLength(combinedPath.AsSpan()))
+                ? RemoveRedundantSegments(combinedPath.AsSpan())
                 : GetFullPath(combinedPath);
         }
 
@@ -213,11 +213,11 @@ namespace System.IO
             if (PathInternal.IsEffectivelyEmpty(path.AsSpan()))
                 return null;
 
-            ReadOnlySpan<char> result = GetPathRoot(path.AsSpan());
-            if (path!.Length == result.Length)
-                return PathInternal.NormalizeDirectorySeparators(path);
+            int rootLength = PathInternal.GetRootLength(path.AsSpan());
+            if (rootLength <= 0)
+                return string.Empty;
 
-            return PathInternal.NormalizeDirectorySeparators(result.ToString());
+            return PathInternal.NormalizeDirectorySeparators(path.AsSpan(0, rootLength));
         }
 
         /// <remarks>
@@ -228,8 +228,8 @@ namespace System.IO
             if (PathInternal.IsEffectivelyEmpty(path))
                 return ReadOnlySpan<char>.Empty;
 
-            int pathRoot = PathInternal.GetRootLength(path);
-            return pathRoot <= 0 ? ReadOnlySpan<char>.Empty : path.Slice(0, pathRoot);
+            int rootLength = PathInternal.GetRootLength(path);
+            return rootLength <= 0 ? ReadOnlySpan<char>.Empty : path.Slice(0, rootLength);
         }
 
         /// <summary>Gets whether the system is case-sensitive.</summary>

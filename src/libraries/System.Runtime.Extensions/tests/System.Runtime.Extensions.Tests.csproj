@@ -10,6 +10,9 @@
     <Compile Include="System\ApplicationIdTests.cs" />
     <Compile Include="System\Convert.cs" />
     <Compile Include="System\EnvironmentTests.cs" />
+    <Compile Include="System\IO\RemoveRedundantSegmentsTests.cs" />
+    <Compile Include="System\IO\RemoveRedundantSegmentsTests_Windows.cs" />
+    <Compile Include="System\IO\RemoveRedundantSegmentsTests_Unix.cs" />
     <Compile Include="System\IO\PathTests.cs" />
     <Compile Include="System\IO\PathTests_Windows.cs" />
     <Compile Include="System\IO\PathTests_Unix.cs" />
@@ -19,7 +22,6 @@
     <Compile Include="System\AppDomainTests.cs" />
     <Compile Include="System\Reflection\AssemblyNameProxyTests.cs" />
     <Compile Include="System\MarshalByRefObjectTest.cs" />
-    <Compile Include="TestHelpers.cs" />
     <Compile Include="System\BitConverterSpan.cs" />
     <Compile Include="System\IO\Path.GetRelativePath.cs" />
     <Compile Include="System\MathF.cs" />
@@ -72,6 +74,7 @@
     <Compile Include="System\StringComparer.cs" />
     <Compile Include="System\Runtime\ProfileOptimization.cs" />
     <Compile Include="System\Runtime\CompilerServices\SwitchExpressionExceptionTests.cs" />
+    <Compile Include="TestHelpers.cs" />
 
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.GetNodeName.cs" Condition="'$(TargetsUnix)' == 'true'"
              Link="Common\Interop\Unix\System.Native\Interop.GetNodeName.cs" />

@@ -35,11 +35,10 @@ namespace System.IO
         /// <summary>
         /// Normalize separators in the given path. Compresses forward slash runs.
         /// </summary>
-        [return: NotNullIfNotNull("path")]
-        internal static string? NormalizeDirectorySeparators(string? path)
+        internal static string NormalizeDirectorySeparators(ReadOnlySpan<char> path)
         {
-            if (string.IsNullOrEmpty(path))
-                return path;
+            if (IsEffectivelyEmpty(path))
+                return path.ToString();
 
             // Make a pass to see if we need to normalize so we can potentially skip allocating
             bool normalized = true;
@@ -55,9 +54,9 @@ namespace System.IO
             }
 
             if (normalized)
-                return path;
+                return path.ToString();
 
-            StringBuilder builder = new StringBuilder(path.Length);
+            ValueStringBuilder builder = new ValueStringBuilder(path.Length);
 
             for (int i = 0; i < path.Length; i++)
             {

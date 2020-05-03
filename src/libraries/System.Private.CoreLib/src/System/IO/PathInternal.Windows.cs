@@ -314,7 +314,7 @@ namespace System.IO
         /// Like the current NormalizePath this will not try and analyze periods/spaces within directory segments.
         /// </summary>
         /// <remarks>
-        /// The only callers that used to use Path.Normalize(fullCheck=false) were Path.GetDirectoryName() and Path.GetPathRoot(). Both usages do
+        /// The only callers that used to use Path.Normalize(fullCheck=false) were Path.GetDirectoryName() and Path.GetPathRoot(string). Both usages do
         /// not need trimming of trailing whitespace here.
         ///
         /// GetPathRoot() could technically skip normalizing separators after the second segment- consider as a future optimization.
@@ -335,11 +335,10 @@ namespace System.IO
         ///   3. Doesn't play nice with string logic
         ///   4. Isn't a cross-plat friendly concept/behavior
         /// </remarks>
-        [return: NotNullIfNotNull("path")]
-        internal static string? NormalizeDirectorySeparators(string? path)
+        internal static string NormalizeDirectorySeparators(ReadOnlySpan<char> path)
         {
-            if (string.IsNullOrEmpty(path))
-                return path;
+            if (IsEffectivelyEmpty(path))
+                return path.ToString();
 
             char current;
 
@@ -360,9 +359,9 @@ namespace System.IO
             }
 
             if (normalized)
-                return path;
+                return path.ToString();
 
-            var builder = new ValueStringBuilder(stackalloc char[MaxShortPath]);
+            ValueStringBuilder builder = new ValueStringBuilder(path.Length);
 
             int start = 0;
             if (IsDirectorySeparator(path[start]))
