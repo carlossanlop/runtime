@@ -15,6 +15,65 @@ namespace System.IO.Compression
     {
         private const int TaskTimeout = 30 * 1000; // Generous timeout for official test runs
 
+        [Theory]
+        [InlineData((CompressionLevel)3)]
+        // https://github.com/dotnet/runtime/issues/36245
+        // Brotli very inefficient with smaller writes
+        // When writing to a Brotli stream one line at a time, the compressed output is actually larger than the uncompressed input.
+        public async Task Test36245(CompressionLevel compressionLevel)
+        {
+            Console.WriteLine("-----------------------");
+            Console.WriteLine($"Testing compression level {compressionLevel}");
+
+            if ((int)compressionLevel < 0 || (int)compressionLevel > 11)
+            {
+                Console.WriteLine("OUTSIDE RANGE [0, 11]");
+                return;
+            }
+
+            const int NUMBER_OF_LINES = 10000;
+            const string SAMPLE_STRING = "hello this should compress well\n";
+
+            var inputString = string.Concat(Enumerable.Repeat(SAMPLE_STRING, NUMBER_OF_LINES));
+            var inputBytes = Encoding.UTF8.GetBytes(inputString);
+            Console.WriteLine($"Input size: {inputBytes.Length} bytes");
+
+            using (var outputMemory = new MemoryStream())
+            using (var outputStream = new BrotliStream(outputMemory, compressionLevel))
+            {
+                await outputStream.WriteAsync(inputBytes);
+                Console.WriteLine($"Output size (all at once): {outputMemory.Length} bytes");
+            }
+
+            using (var outputMemory = new MemoryStream())
+            using (var outputStream = new BrotliStream(outputMemory, compressionLevel))
+            {
+                var bytes = Encoding.UTF8.GetBytes(SAMPLE_STRING);
+                for (int i = 0; i < NUMBER_OF_LINES; i++)
+                {
+                    await outputStream.WriteAsync(bytes);
+                }
+                Console.WriteLine($"Output size (line by line): {outputMemory.Length} bytes");
+            }
+
+            using (var outputMemory = new MemoryStream())
+            using (var outputStream = new BrotliStream(outputMemory, compressionLevel))
+            {
+                foreach (byte inputByte in inputBytes)
+                {
+                    await outputStream.WriteAsync(new byte[] { inputByte });
+                }
+
+                Console.WriteLine($"Output size (byte by byte): {outputMemory.Length} bytes");
+            }
+
+            Console.WriteLine("-----------------------");
+        }
+
+
+
+
+
         [Fact]
         public virtual void FlushAsync_DuringWriteAsync()
         {
