@@ -140,7 +140,9 @@ namespace System.IO.Enumeration
         public DateTimeOffset LastAccessTimeUtc => _status.GetLastAccessTime(FullPath, continueOnError: true);
         public DateTimeOffset LastWriteTimeUtc => _status.GetLastWriteTime(FullPath, continueOnError: true);
         public bool IsDirectory => _status.InitiallyDirectory;
-        public bool IsHidden => _directoryEntry.Name[0] == '.' || (Attributes & FileAttributes.Hidden) != 0;
+
+        public bool IsHidden => _directoryEntry.Name[0] == '.' ||
+                                (Interop.Sys.CanSetHiddenFlag && (Attributes & FileAttributes.Hidden) != 0);
 
         public FileSystemInfo ToFileSystemInfo()
         {

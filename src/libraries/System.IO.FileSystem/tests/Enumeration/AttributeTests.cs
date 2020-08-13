@@ -121,7 +121,6 @@ namespace System.IO.Tests.Enumeration
 
         }
 
-
         [Fact]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
         public void IsHiddenAttribute_Unix()
