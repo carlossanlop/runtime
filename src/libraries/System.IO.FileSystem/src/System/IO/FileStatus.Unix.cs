@@ -18,7 +18,7 @@ namespace System.IO
         private int _fileStatusInitialized;
 
         // Is a directory as of the last refresh
-        internal bool _isDirectory;
+        private bool _isDirectory;
 
         // We track intent of creation to know whether or not we want to (1) create a
         // DirectoryInfo around this status struct or (2) actually are part of a DirectoryInfo.
