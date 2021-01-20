@@ -7,7 +7,8 @@ namespace System.IO
 {
     internal struct FileStatus
     {
-        private const int NanosecondsPerTick = 100;
+        // Exists as of the last refresh
+        private bool _exists;
 
         // The last cached stat information about the file
         private Interop.Sys.FileStatus _fileStatus;
@@ -16,15 +17,14 @@ namespace System.IO
         // errors, or the errno error code.
         private int _fileStatusInitialized;
 
+        // Is a directory as of the last refresh
+        internal bool _isDirectory;
+
         // We track intent of creation to know whether or not we want to (1) create a
         // DirectoryInfo around this status struct or (2) actually are part of a DirectoryInfo.
         internal bool InitiallyDirectory { get; private set; }
 
-        // Is a directory as of the last refresh
-        internal bool _isDirectory;
-
-        // Exists as of the last refresh
-        private bool _exists;
+        private const int NanosecondsPerTick = 100;
 
         internal static void Initialize(
             ref FileStatus status,
