@@ -41,7 +41,7 @@ namespace System.IO
             }
         }
 
-        public FileAttributes GetAttributes(ReadOnlySpan<char> path, ReadOnlySpan<char> fileName)
+        internal FileAttributes GetAttributes(ReadOnlySpan<char> path, ReadOnlySpan<char> fileName)
         {
             // IMPORTANT: Attribute logic must match the logic in FileSystemEntry
 
@@ -158,7 +158,7 @@ namespace System.IO
                 (_fileStatus.Mode & (int)writeBit) == 0);     // but not write permission
         }
 
-        public void Refresh(ReadOnlySpan<char> path)
+        internal void Refresh(ReadOnlySpan<char> path)
         {
             // This should not throw, instead we store the result so that we can throw it
             // when someone actually accesses a property.
@@ -245,7 +245,7 @@ namespace System.IO
             _fileStatusInitialized = -1;
         }
 
-        public void SetAttributes(string path, FileAttributes attributes)
+        internal void SetAttributes(string path, FileAttributes attributes)
         {
             // Validate that only flags from the attribute are being provided.  This is an
             // approximation for the validation done by the Win32 function.
