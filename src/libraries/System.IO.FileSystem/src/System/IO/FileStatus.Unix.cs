@@ -11,33 +11,73 @@ namespace System.IO
         private bool _exists;
 
         // The last cached lstat information about the file
-        private Interop.Sys.FileStatus _lastLStat;
+        private Interop.Sys.FileStatus _mainCache;
 
-        // -1 if _lastLStat isn't initialized, 0 if _lastLStat was initialized with no
-        // errors, or the errno error code.
-        private int _fileStatusInitialized;
+        // The last cached stat information about the file
+        // Refresh only collects this if lstat determines the path is a symbolic link
+        private Interop.Sys.FileStatus _secondaryCache;
 
-        // Is a directory as of the last refresh
-        private bool _isDirectory;
+        // -1 if _mainCache isn't initialized - Refresh should always change this value
+        // 0 if _mainCache was initialized with no errors
+        // or the errno error code (always positive value)
+        private int _initializedMainCache;
+
+        // -1 if _secondaryCache isn't initialized - Refresh only changes this value if lstat determines the path is a symbolic link
+        // 0 if _secondaryCache was initialized with no errors
+        // or the errno error code (always positive value)
+        private int _initializedSecondaryCache;
 
         // We track intent of creation to know whether or not we want to (1) create a
         // DirectoryInfo around this status struct or (2) actually are part of a DirectoryInfo.
         internal bool InitiallyDirectory { get; private set; }
 
+        private bool IsDirectory
+        {
+            get
+            {
+                // If the file is known to be a symbolic link and the last stat was successful, check the stat result
+                if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK && _initializedSecondaryCache == 0)
+                {
+                    return (_secondaryCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR;
+                }
+                else if (_initializedMainCache == 0)
+                {
+                    return (_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR;
+                }
+
+                return false;
+            }
+        }
+
         private const int NanosecondsPerTick = 100;
 
         internal void EnsureStatInitialized(ReadOnlySpan<char> path, bool continueOnError = false)
         {
-            if (_fileStatusInitialized == -1)
+            if (_initializedMainCache == -1)
             {
                 Refresh(path);
             }
 
-            if (_fileStatusInitialized != 0 && !continueOnError)
+            if (!continueOnError)
             {
-                int errno = _fileStatusInitialized;
-                _fileStatusInitialized = -1;
-                throw Interop.GetExceptionForIoErrno(new Interop.ErrorInfo(errno), new string(path));
+                int errno = 0;
+                // Lstat should always be initialized by Refresh
+                if (_initializedMainCache != 0)
+                {
+                    errno = _initializedMainCache;
+                    _initializedMainCache = -1;
+                }
+                // Stat is optionally initialized when Refresh detects object is a symbolic link
+                else if (_initializedSecondaryCache != 0 && _initializedSecondaryCache != -1)
+                {
+                    errno = _initializedSecondaryCache;
+                    _initializedSecondaryCache = -1;
+                }
+
+                if (errno != 0)
+                {
+                    throw Interop.GetExceptionForIoErrno(new Interop.ErrorInfo(errno), new string(path));
+                }
             }
         }
 
@@ -55,14 +95,14 @@ namespace System.IO
             if (IsReadOnly(path))
                 attributes |= FileAttributes.ReadOnly;
 
-            if ((_lastLStat.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
+            if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
                 attributes |= FileAttributes.ReparsePoint;
 
-            if (_isDirectory)
+            if (IsDirectory)
                 attributes |= FileAttributes.Directory;
 
             // If the filename starts with a period or has UF_HIDDEN flag set, it's hidden.
-            if (fileName.Length > 0 && (fileName[0] == '.' || (_lastLStat.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == (uint)Interop.Sys.UserFlags.UF_HIDDEN))
+            if (fileName.Length > 0 && (fileName[0] == '.' || (_mainCache.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == (uint)Interop.Sys.UserFlags.UF_HIDDEN))
                 attributes |= FileAttributes.Hidden;
 
             return attributes != default ? attributes : FileAttributes.Normal;
@@ -74,23 +114,23 @@ namespace System.IO
             if (!_exists)
                 return DateTimeOffset.FromFileTime(0);
 
-            if ((_lastLStat.Flags & Interop.Sys.FileStatusFlags.HasBirthTime) != 0)
-                return UnixTimeToDateTimeOffset(_lastLStat.BirthTime, _lastLStat.BirthTimeNsec);
+            if ((_mainCache.Flags & Interop.Sys.FileStatusFlags.HasBirthTime) != 0)
+                return UnixTimeToDateTimeOffset(_mainCache.BirthTime, _mainCache.BirthTimeNsec);
 
             // fall back to the oldest time we have in between change and modify time
-            if (_lastLStat.MTime < _lastLStat.CTime ||
-                (_lastLStat.MTime == _lastLStat.CTime && _lastLStat.MTimeNsec < _lastLStat.CTimeNsec))
-                return UnixTimeToDateTimeOffset(_lastLStat.MTime, _lastLStat.MTimeNsec);
+            if (_mainCache.MTime < _mainCache.CTime ||
+                (_mainCache.MTime == _mainCache.CTime && _mainCache.MTimeNsec < _mainCache.CTimeNsec))
+                return UnixTimeToDateTimeOffset(_mainCache.MTime, _mainCache.MTimeNsec);
 
-            return UnixTimeToDateTimeOffset(_lastLStat.CTime, _lastLStat.CTimeNsec);
+            return UnixTimeToDateTimeOffset(_mainCache.CTime, _mainCache.CTimeNsec);
         }
 
         internal bool GetExists(ReadOnlySpan<char> path)
         {
-            if (_fileStatusInitialized == -1)
+            if (_initializedMainCache == -1)
                 Refresh(path);
 
-            return _exists && InitiallyDirectory == _isDirectory;
+            return _exists && InitiallyDirectory == IsDirectory;
         }
 
         internal DateTimeOffset GetLastAccessTime(ReadOnlySpan<char> path, bool continueOnError = false)
@@ -98,7 +138,7 @@ namespace System.IO
             EnsureStatInitialized(path, continueOnError);
             if (!_exists)
                 return DateTimeOffset.FromFileTime(0);
-            return UnixTimeToDateTimeOffset(_lastLStat.ATime, _lastLStat.ATimeNsec);
+            return UnixTimeToDateTimeOffset(_mainCache.ATime, _mainCache.ATimeNsec);
         }
 
         internal DateTimeOffset GetLastWriteTime(ReadOnlySpan<char> path, bool continueOnError = false)
@@ -106,13 +146,13 @@ namespace System.IO
             EnsureStatInitialized(path, continueOnError);
             if (!_exists)
                 return DateTimeOffset.FromFileTime(0);
-            return UnixTimeToDateTimeOffset(_lastLStat.MTime, _lastLStat.MTimeNsec);
+            return UnixTimeToDateTimeOffset(_mainCache.MTime, _mainCache.MTimeNsec);
         }
 
         internal long GetLength(ReadOnlySpan<char> path, bool continueOnError = false)
         {
             EnsureStatInitialized(path, continueOnError);
-            return _lastLStat.Size;
+            return _mainCache.Size;
         }
 
         internal static void Initialize(
@@ -120,10 +160,10 @@ namespace System.IO
             bool isDirectory)
         {
             status.InitiallyDirectory = isDirectory;
-            status._fileStatusInitialized = -1;
+            status._initializedMainCache = -1;
         }
 
-        internal void Invalidate() => _fileStatusInitialized = -1;
+        internal void Invalidate() => _initializedMainCache = -1;
 
         internal bool IsReadOnly(ReadOnlySpan<char> path, bool continueOnError = false)
         {
@@ -134,13 +174,13 @@ namespace System.IO
 #else
             Interop.Sys.Permissions readBit, writeBit;
 
-            if (_lastLStat.Uid == Interop.Sys.GetEUid())
+            if (_mainCache.Uid == Interop.Sys.GetEUid())
             {
                 // User effectively owns the file
                 readBit = Interop.Sys.Permissions.S_IRUSR;
                 writeBit = Interop.Sys.Permissions.S_IWUSR;
             }
-            else if (_lastLStat.Gid == Interop.Sys.GetEGid())
+            else if (_mainCache.Gid == Interop.Sys.GetEGid())
             {
                 // User belongs to a group that effectively owns the file
                 readBit = Interop.Sys.Permissions.S_IRGRP;
@@ -154,8 +194,8 @@ namespace System.IO
             }
 #endif
 
-            return ((_lastLStat.Mode & (int)readBit) != 0 && // has read permission
-                (_lastLStat.Mode & (int)writeBit) == 0);     // but not write permission
+            return ((_mainCache.Mode & (int)readBit) != 0 && // has read permission
+                (_mainCache.Mode & (int)writeBit) == 0);     // but not write permission
         }
 
         internal void Refresh(ReadOnlySpan<char> path)
@@ -164,51 +204,60 @@ namespace System.IO
             // when someone actually accesses a property.
 
             // Use lstat to get the details on the object, without following symlinks.
-            // If it is a symlink, then subsequently get details on the target of the symlink,
             // storing those results separately.  We only report failure if the initial
             // lstat fails, as a broken symlink should still report info on exists, attributes, etc.
-            _isDirectory = false;
             path = Path.TrimEndingDirectorySeparator(path);
 
-            int result = Interop.Sys.LStat(path, out _lastLStat);
-            if (result < 0)
+            _initializedMainCache = VerifyStatCall(Interop.Sys.LStat(path, out _mainCache));
+            if (_initializedMainCache != 0)
+            {
+                _exists = false;
+                return;
+            }
+
+            // Call stat only if lstat told us the object is a symbolic link
+            if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
+            {
+                _initializedSecondaryCache = VerifyStatCall(Interop.Sys.Stat(path, out _secondaryCache));
+                if (_initializedSecondaryCache != 0)
+                {
+                    _exists = false;
+                    return;
+                }
+            }
+
+            _exists = true;
+
+            _initializedMainCache = 0;
+            _initializedSecondaryCache = 0;
+        }
+
+        private int VerifyStatCall(int returnValue)
+        {
+            if (returnValue < 0)
             {
                 Interop.ErrorInfo errorInfo = Interop.Sys.GetLastErrorInfo();
 
                 // This should never set the error if the file can't be found.
                 // (see the Windows refresh passing returnErrorOnNotFound: false).
-                if (errorInfo.Error == Interop.Error.ENOENT
-                    || errorInfo.Error == Interop.Error.ENOTDIR)
+                if (errorInfo.Error == Interop.Error.ENOENT || // A component of the path does not exist, or path is an empty string
+                    errorInfo.Error == Interop.Error.ENOTDIR) // A component of the path prefix of path is not a directory
                 {
-                    _fileStatusInitialized = 0;
-                    _exists = false;
+                    return 0;
                 }
                 else
                 {
-                    _fileStatusInitialized = errorInfo.RawErrno;
+                    return errorInfo.RawErrno;
                 }
-                return;
             }
 
-            _exists = true;
-
-            // IMPORTANT: Is directory logic must match the logic in FileSystemEntry
-            _isDirectory = (_lastLStat.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR;
-
-            // If we're a symlink, attempt to check the target to see if it is a directory
-            if ((_lastLStat.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK &&
-                Interop.Sys.Stat(path, out Interop.Sys.FileStatus targetStatus) >= 0)
-            {
-                _isDirectory = (targetStatus.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR;
-            }
-
-            _fileStatusInitialized = 0;
+            return 0;
         }
 
         private unsafe void SetAccessOrWriteTime(string path, DateTimeOffset time, bool isAccessTime)
         {
             // force a refresh so that we have an up-to-date times for values not being overwritten
-            _fileStatusInitialized = -1;
+            _initializedMainCache = -1;
             EnsureStatInitialized(path);
 
             // we use utimes()/utimensat() to set the accessTime and writeTime
@@ -230,19 +279,19 @@ namespace System.IO
             {
                 buf[0].TvSec = seconds;
                 buf[0].TvNsec = nanoseconds;
-                buf[1].TvSec = _lastLStat.MTime;
-                buf[1].TvNsec = _lastLStat.MTimeNsec;
+                buf[1].TvSec = _mainCache.MTime;
+                buf[1].TvNsec = _mainCache.MTimeNsec;
             }
             else
             {
-                buf[0].TvSec = _lastLStat.ATime;
-                buf[0].TvNsec = _lastLStat.ATimeNsec;
+                buf[0].TvSec = _mainCache.ATime;
+                buf[0].TvNsec = _mainCache.ATimeNsec;
                 buf[1].TvSec = seconds;
                 buf[1].TvNsec = nanoseconds;
             }
 #endif
             Interop.CheckIo(Interop.Sys.UTimensat(path, buf), path, InitiallyDirectory);
-            _fileStatusInitialized = -1;
+            _initializedMainCache = -1;
         }
 
         internal void SetAttributes(string path, FileAttributes attributes)
@@ -271,25 +320,25 @@ namespace System.IO
             {
                 if ((attributes & FileAttributes.Hidden) != 0)
                 {
-                    if ((_lastLStat.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == 0)
+                    if ((_mainCache.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == 0)
                     {
                         // If Hidden flag is set and cached file status does not have the flag set then set it
-                        Interop.CheckIo(Interop.Sys.LChflags(path, (_lastLStat.UserFlags | (uint)Interop.Sys.UserFlags.UF_HIDDEN)), path, InitiallyDirectory);
+                        Interop.CheckIo(Interop.Sys.LChflags(path, (_mainCache.UserFlags | (uint)Interop.Sys.UserFlags.UF_HIDDEN)), path, InitiallyDirectory);
                     }
                 }
                 else
                 {
-                    if ((_lastLStat.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == (uint)Interop.Sys.UserFlags.UF_HIDDEN)
+                    if ((_mainCache.UserFlags & (uint)Interop.Sys.UserFlags.UF_HIDDEN) == (uint)Interop.Sys.UserFlags.UF_HIDDEN)
                     {
                         // If Hidden flag is not set and cached file status does have the flag set then remove it
-                        Interop.CheckIo(Interop.Sys.LChflags(path, (_lastLStat.UserFlags & ~(uint)Interop.Sys.UserFlags.UF_HIDDEN)), path, InitiallyDirectory);
+                        Interop.CheckIo(Interop.Sys.LChflags(path, (_mainCache.UserFlags & ~(uint)Interop.Sys.UserFlags.UF_HIDDEN)), path, InitiallyDirectory);
                     }
                 }
             }
 
             // The only thing we can reasonably change is whether the file object is readonly by changing permissions.
 
-            int newMode = _lastLStat.Mode;
+            int newMode = _mainCache.Mode;
             if ((attributes & FileAttributes.ReadOnly) != 0)
             {
                 // Take away all write permissions from user/group/everyone
@@ -302,12 +351,12 @@ namespace System.IO
             }
 
             // Change the permissions on the file
-            if (newMode != _lastLStat.Mode)
+            if (newMode != _mainCache.Mode)
             {
                 Interop.CheckIo(Interop.Sys.ChMod(path, newMode), path, InitiallyDirectory);
             }
 
-            _fileStatusInitialized = -1;
+            _initializedMainCache = -1;
         }
 
         internal void SetCreationTime(string path, DateTimeOffset time)
