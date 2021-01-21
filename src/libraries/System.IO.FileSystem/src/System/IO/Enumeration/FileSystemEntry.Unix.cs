@@ -135,8 +135,17 @@ namespace System.IO.Enumeration
         // with the native enumeration struct. As such we must not throw here.
 
         public FileAttributes Attributes
-            // It would be hard to rationalize if the attributes change after our initial find.
-            => _initialAttributes | (_status.IsReadOnly(FullPath, continueOnError: true) ? FileAttributes.ReadOnly : 0);
+        {
+            get
+            {
+                if (_status.IsInvalid)
+                {
+                    _status.EnsureStatInitialized(FullPath, continueOnError: true);
+                }
+                // It would be hard to rationalize if the attributes change after our initial find.
+                return _initialAttributes | (_status.IsReadOnly ? FileAttributes.ReadOnly : 0);
+            }
+        }
 
         public long Length => _status.GetLength(FullPath, continueOnError: true);
         public DateTimeOffset CreationTimeUtc => _status.GetCreationTime(FullPath, continueOnError: true);

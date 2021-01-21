@@ -49,6 +49,13 @@ namespace System.IO
             }
         }
 
+        internal bool IsInvalid => _initializedMainCache == -1 || _initializedSecondaryCache == -1;
+
+        // Returns readonly flag of the current object, without following symbolic links
+        // To read the readonly flag of the object a symbolic link points to,
+        // one must query the path to which the symbolic link points
+        internal bool IsReadOnly => HasReadOnly(_mainCache);
+
         private bool IsSymbolicLink =>
             _initializedMainCache == 0 &&
             (_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK;
@@ -57,7 +64,7 @@ namespace System.IO
 
         internal void EnsureStatInitialized(ReadOnlySpan<char> path, bool continueOnError = false)
         {
-            if (IsInvalid())
+            if (IsInvalid)
             {
                 Refresh(path);
             }
@@ -95,7 +102,7 @@ namespace System.IO
 
             FileAttributes attributes = default;
 
-            if (IsReadOnly(path))
+            if (IsReadOnly)
                 attributes |= FileAttributes.ReadOnly;
 
             if (IsSymbolicLink)
@@ -130,7 +137,7 @@ namespace System.IO
 
         internal bool GetExists(ReadOnlySpan<char> path)
         {
-            if (IsInvalid())
+            if (IsInvalid)
             {
                 Refresh(path);
             }
@@ -160,38 +167,21 @@ namespace System.IO
             return _mainCache.Size;
         }
 
-        internal static void Initialize(
-            ref FileStatus status,
-            bool isDirectory)
+        private static bool HasReadOnly(Interop.Sys.FileStatus status)
         {
-            status.InitiallyDirectory = isDirectory;
-            status.Invalidate();
-        }
-
-        internal void Invalidate()
-        {
-            _initializedMainCache = -1;
-            _initializedSecondaryCache = -1;
-        }
-
-        private bool IsInvalid() => _initializedMainCache == -1 || _initializedSecondaryCache == -1;
-
-        internal bool IsReadOnly(ReadOnlySpan<char> path, bool continueOnError = false)
-        {
-            EnsureStatInitialized(path, continueOnError);
 #if TARGET_BROWSER
             const Interop.Sys.Permissions readBit = Interop.Sys.Permissions.S_IRUSR;
             const Interop.Sys.Permissions writeBit = Interop.Sys.Permissions.S_IWUSR;
 #else
             Interop.Sys.Permissions readBit, writeBit;
 
-            if (_mainCache.Uid == Interop.Sys.GetEUid())
+            if (status.Uid == Interop.Sys.GetEUid())
             {
                 // User effectively owns the file
                 readBit = Interop.Sys.Permissions.S_IRUSR;
                 writeBit = Interop.Sys.Permissions.S_IWUSR;
             }
-            else if (_mainCache.Gid == Interop.Sys.GetEGid())
+            else if (status.Gid == Interop.Sys.GetEGid())
             {
                 // User belongs to a group that effectively owns the file
                 readBit = Interop.Sys.Permissions.S_IRGRP;
@@ -204,9 +194,22 @@ namespace System.IO
                 writeBit = Interop.Sys.Permissions.S_IWOTH;
             }
 #endif
+            return ((status.Mode & (int)readBit) != 0 && // has read permission
+                    (status.Mode & (int)writeBit) == 0);     // but not write permission
+        }
 
-            return ((_mainCache.Mode & (int)readBit) != 0 && // has read permission
-                (_mainCache.Mode & (int)writeBit) == 0);     // but not write permission
+        internal static void Initialize(
+            ref FileStatus status,
+            bool isDirectory)
+        {
+            status.InitiallyDirectory = isDirectory;
+            status.Invalidate();
+        }
+
+        internal void Invalidate()
+        {
+            _initializedMainCache = -1;
+            _initializedSecondaryCache = -1;
         }
 
         internal void Refresh(ReadOnlySpan<char> path)
