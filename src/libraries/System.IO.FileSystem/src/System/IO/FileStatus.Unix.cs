@@ -36,7 +36,7 @@ namespace System.IO
             get
             {
                 // If the file is known to be a symbolic link and the last stat was successful, check the stat result
-                if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK && _initializedSecondaryCache == 0)
+                if (IsSymbolicLink && _initializedSecondaryCache == 0)
                 {
                     return (_secondaryCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR;
                 }
@@ -48,6 +48,10 @@ namespace System.IO
                 return false;
             }
         }
+
+        private bool IsSymbolicLink =>
+            _initializedMainCache == 0 &&
+            (_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK;
 
         private const int NanosecondsPerTick = 100;
 
@@ -94,7 +98,7 @@ namespace System.IO
             if (IsReadOnly(path))
                 attributes |= FileAttributes.ReadOnly;
 
-            if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
+            if (IsSymbolicLink)
                 attributes |= FileAttributes.ReparsePoint;
 
             if (IsDirectory)
@@ -223,7 +227,7 @@ namespace System.IO
             }
 
             // Call stat only if lstat told us the object is a symbolic link
-            if ((_mainCache.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
+            if (IsSymbolicLink)
             {
                 _initializedSecondaryCache = VerifyStatCall(Interop.Sys.Stat(path, out _secondaryCache));
                 if (_initializedSecondaryCache != 0)
@@ -231,12 +235,12 @@ namespace System.IO
                     _exists = false;
                     return;
                 }
+                _initializedSecondaryCache = 0;
             }
 
             _exists = true;
 
             _initializedMainCache = 0;
-            _initializedSecondaryCache = 0;
         }
 
         private int VerifyStatCall(int returnValue)
