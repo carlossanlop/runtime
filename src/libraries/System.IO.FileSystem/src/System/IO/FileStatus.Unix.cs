@@ -53,7 +53,7 @@ namespace System.IO
 
         internal void EnsureStatInitialized(ReadOnlySpan<char> path, bool continueOnError = false)
         {
-            if (_initializedMainCache == -1)
+            if (IsInvalid())
             {
                 Refresh(path);
             }
@@ -65,17 +65,16 @@ namespace System.IO
                 if (_initializedMainCache != 0)
                 {
                     errno = _initializedMainCache;
-                    _initializedMainCache = -1;
                 }
                 // Stat is optionally initialized when Refresh detects object is a symbolic link
                 else if (_initializedSecondaryCache != 0 && _initializedSecondaryCache != -1)
                 {
                     errno = _initializedSecondaryCache;
-                    _initializedSecondaryCache = -1;
                 }
 
                 if (errno != 0)
                 {
+                    Invalidate();
                     throw Interop.GetExceptionForIoErrno(new Interop.ErrorInfo(errno), new string(path));
                 }
             }
@@ -127,8 +126,10 @@ namespace System.IO
 
         internal bool GetExists(ReadOnlySpan<char> path)
         {
-            if (_initializedMainCache == -1)
+            if (IsInvalid())
+            {
                 Refresh(path);
+            }
 
             return _exists && InitiallyDirectory == IsDirectory;
         }
@@ -160,10 +161,16 @@ namespace System.IO
             bool isDirectory)
         {
             status.InitiallyDirectory = isDirectory;
-            status._initializedMainCache = -1;
+            status.Invalidate();
         }
 
-        internal void Invalidate() => _initializedMainCache = -1;
+        internal void Invalidate()
+        {
+            _initializedMainCache = -1;
+            _initializedSecondaryCache = -1;
+        }
+
+        private bool IsInvalid() => _initializedMainCache == -1 || _initializedSecondaryCache == -1;
 
         internal bool IsReadOnly(ReadOnlySpan<char> path, bool continueOnError = false)
         {
@@ -257,7 +264,7 @@ namespace System.IO
         private unsafe void SetAccessOrWriteTime(string path, DateTimeOffset time, bool isAccessTime)
         {
             // force a refresh so that we have an up-to-date times for values not being overwritten
-            _initializedMainCache = -1;
+            Invalidate();
             EnsureStatInitialized(path);
 
             // we use utimes()/utimensat() to set the accessTime and writeTime
@@ -291,7 +298,7 @@ namespace System.IO
             }
 #endif
             Interop.CheckIo(Interop.Sys.UTimensat(path, buf), path, InitiallyDirectory);
-            _initializedMainCache = -1;
+            Invalidate();
         }
 
         internal void SetAttributes(string path, FileAttributes attributes)
@@ -356,7 +363,7 @@ namespace System.IO
                 Interop.CheckIo(Interop.Sys.ChMod(path, newMode), path, InitiallyDirectory);
             }
 
-            _initializedMainCache = -1;
+            Invalidate();
         }
 
         internal void SetCreationTime(string path, DateTimeOffset time)
