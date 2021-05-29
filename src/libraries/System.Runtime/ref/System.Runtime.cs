@@ -7215,183 +7215,6 @@ namespace System.IO
         public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
         public override void WriteByte(byte value) { }
     }
-    public partial class DirectoryNotFoundException : System.IO.IOException
-    {
-        public DirectoryNotFoundException() { }
-        protected DirectoryNotFoundException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public DirectoryNotFoundException(string? message) { }
-        public DirectoryNotFoundException(string? message, System.Exception? innerException) { }
-    }
-    public partial class EndOfStreamException : System.IO.IOException
-    {
-        public EndOfStreamException() { }
-        protected EndOfStreamException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public EndOfStreamException(string? message) { }
-        public EndOfStreamException(string? message, System.Exception? innerException) { }
-    }
-    [System.FlagsAttribute]
-    public enum FileAccess
-    {
-        Read = 1,
-        Write = 2,
-        ReadWrite = 3,
-    }
-    [System.FlagsAttribute]
-    public enum FileAttributes
-    {
-        ReadOnly = 1,
-        Hidden = 2,
-        System = 4,
-        Directory = 16,
-        Archive = 32,
-        Device = 64,
-        Normal = 128,
-        Temporary = 256,
-        SparseFile = 512,
-        ReparsePoint = 1024,
-        Compressed = 2048,
-        Offline = 4096,
-        NotContentIndexed = 8192,
-        Encrypted = 16384,
-        IntegrityStream = 32768,
-        NoScrubData = 131072,
-    }
-    public partial class FileLoadException : System.IO.IOException
-    {
-        public FileLoadException() { }
-        protected FileLoadException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public FileLoadException(string? message) { }
-        public FileLoadException(string? message, System.Exception? inner) { }
-        public FileLoadException(string? message, string? fileName) { }
-        public FileLoadException(string? message, string? fileName, System.Exception? inner) { }
-        public string? FileName { get { throw null; } }
-        public string? FusionLog { get { throw null; } }
-        public override string Message { get { throw null; } }
-        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public override string ToString() { throw null; }
-    }
-    public enum FileMode
-    {
-        CreateNew = 1,
-        Create = 2,
-        Open = 3,
-        OpenOrCreate = 4,
-        Truncate = 5,
-        Append = 6,
-    }
-    public partial class FileNotFoundException : System.IO.IOException
-    {
-        public FileNotFoundException() { }
-        protected FileNotFoundException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public FileNotFoundException(string? message) { }
-        public FileNotFoundException(string? message, System.Exception? innerException) { }
-        public FileNotFoundException(string? message, string? fileName) { }
-        public FileNotFoundException(string? message, string? fileName, System.Exception? innerException) { }
-        public string? FileName { get { throw null; } }
-        public string? FusionLog { get { throw null; } }
-        public override string Message { get { throw null; } }
-        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public override string ToString() { throw null; }
-    }
-    [System.FlagsAttribute]
-    public enum FileOptions
-    {
-        WriteThrough = -2147483648,
-        None = 0,
-        Encrypted = 16384,
-        DeleteOnClose = 67108864,
-        SequentialScan = 134217728,
-        RandomAccess = 268435456,
-        Asynchronous = 1073741824,
-    }
-    [System.FlagsAttribute]
-    public enum FileShare
-    {
-        None = 0,
-        Read = 1,
-        Write = 2,
-        ReadWrite = 3,
-        Delete = 4,
-        Inheritable = 16,
-    }
-    public sealed class FileStreamOptions
-    {
-        public FileStreamOptions() { }
-        public System.IO.FileMode Mode { get; set; }
-        public System.IO.FileAccess Access { get; set; }
-        public System.IO.FileShare Share { get; set; }
-        public System.IO.FileOptions Options { get; set; }
-        public long PreallocationSize { get; set; }
-        public int BufferSize { get; set; }
-    }
-    public partial class FileStream : System.IO.Stream
-    {
-        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access) { }
-        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access, int bufferSize) { }
-        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access, int bufferSize, bool isAsync) { }
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
-        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access) instead.  https://go.microsoft.com/fwlink/?linkid=14202")]
-        public FileStream(System.IntPtr handle, System.IO.FileAccess access) { }
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
-        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
-        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle) { }
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
-        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access, int bufferSize) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
-        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle, int bufferSize) { }
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
-        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access, int bufferSize, bool isAsync) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
-        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle, int bufferSize, bool isAsync) { }
-        public FileStream(string path, System.IO.FileMode mode) { }
-        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access) { }
-        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share) { }
-        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize) { }
-        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize, bool useAsync) { }
-        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize, System.IO.FileOptions options) { }
-        public FileStream(string path, System.IO.FileStreamOptions options) { }
-        public override bool CanRead { get { throw null; } }
-        public override bool CanSeek { get { throw null; } }
-        public override bool CanWrite { get { throw null; } }
-        [System.ObsoleteAttribute("This property has been deprecated.  Please use FileStream's SafeFileHandle property instead.  https://go.microsoft.com/fwlink/?linkid=14202")]
-        public virtual System.IntPtr Handle { get { throw null; } }
-        public virtual bool IsAsync { get { throw null; } }
-        public override long Length { get { throw null; } }
-        public virtual string Name { get { throw null; } }
-        public override long Position { get { throw null; } set { } }
-        public virtual Microsoft.Win32.SafeHandles.SafeFileHandle SafeFileHandle { get { throw null; } }
-        public override System.IAsyncResult BeginRead(byte[] buffer, int offset, int count, System.AsyncCallback? callback, object? state) { throw null; }
-        public override System.IAsyncResult BeginWrite(byte[] buffer, int offset, int count, System.AsyncCallback? callback, object? state) { throw null; }
-        public override System.Threading.Tasks.Task CopyToAsync(System.IO.Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken) { throw null; }
-        protected override void Dispose(bool disposing) { }
-        public override System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
-        public override int EndRead(System.IAsyncResult asyncResult) { throw null; }
-        public override void EndWrite(System.IAsyncResult asyncResult) { }
-        ~FileStream() { }
-        public override void Flush() { }
-        public virtual void Flush(bool flushToDisk) { }
-        public override System.Threading.Tasks.Task FlushAsync(System.Threading.CancellationToken cancellationToken) { throw null; }
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("ios")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("maccatalyst")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("macos")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("tvos")]
-        public virtual void Lock(long position, long length) { }
-        public override int Read(byte[] buffer, int offset, int count) { throw null; }
-        public override int Read(System.Span<byte> buffer) { throw null; }
-        public override System.Threading.Tasks.Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
-        public override System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
-        public override int ReadByte() { throw null; }
-        public override long Seek(long offset, System.IO.SeekOrigin origin) { throw null; }
-        public override void SetLength(long value) { }
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("ios")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("maccatalyst")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("macos")]
-        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("tvos")]
-        public virtual void Unlock(long position, long length) { }
-        public override void Write(byte[] buffer, int offset, int count) { }
-        public override void Write(System.ReadOnlySpan<byte> buffer) { }
-        public override System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
-        public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
-        public override void WriteByte(byte value) { }
-    }
     public static partial class Directory
     {
         public static System.IO.DirectoryInfo CreateDirectory(string path) { throw null; }
@@ -7441,28 +7264,6 @@ namespace System.IO
         public static void SetLastWriteTime(string path, System.DateTime lastWriteTime) { }
         public static void SetLastWriteTimeUtc(string path, System.DateTime lastWriteTimeUtc) { }
     }
-    public abstract partial class FileSystemInfo : System.MarshalByRefObject, System.Runtime.Serialization.ISerializable
-    {
-        protected string FullPath;
-        protected string OriginalPath;
-        protected FileSystemInfo() { }
-        protected FileSystemInfo(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public System.IO.FileAttributes Attributes { get { throw null; } set { } }
-        public System.DateTime CreationTime { get { throw null; } set { } }
-        public System.DateTime CreationTimeUtc { get { throw null; } set { } }
-        public abstract bool Exists { get; }
-        public string Extension { get { throw null; } }
-        public virtual string FullName { get { throw null; } }
-        public System.DateTime LastAccessTime { get { throw null; } set { } }
-        public System.DateTime LastAccessTimeUtc { get { throw null; } set { } }
-        public System.DateTime LastWriteTime { get { throw null; } set { } }
-        public System.DateTime LastWriteTimeUtc { get { throw null; } set { } }
-        public abstract string Name { get; }
-        public abstract void Delete();
-        public virtual void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
-        public void Refresh() { }
-        public override string ToString() { throw null; }
-    }
     public sealed partial class DirectoryInfo : System.IO.FileSystemInfo
     {
         public DirectoryInfo(string path) { }
@@ -7501,21 +7302,19 @@ namespace System.IO
         public void MoveTo(string destDirName) { }
         public override string ToString() { throw null; }
     }
-    public enum MatchCasing
+    public partial class DirectoryNotFoundException : System.IO.IOException
     {
-        PlatformDefault = 0,
-        CaseSensitive = 1,
-        CaseInsensitive = 2,
+        public DirectoryNotFoundException() { }
+        protected DirectoryNotFoundException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public DirectoryNotFoundException(string? message) { }
+        public DirectoryNotFoundException(string? message, System.Exception? innerException) { }
     }
-    public enum MatchType
+    public partial class EndOfStreamException : System.IO.IOException
     {
-        Simple = 0,
-        Win32 = 1,
-    }
-    public enum SearchOption
-    {
-        TopDirectoryOnly = 0,
-        AllDirectories = 1,
+        public EndOfStreamException() { }
+        protected EndOfStreamException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public EndOfStreamException(string? message) { }
+        public EndOfStreamException(string? message, System.Exception? innerException) { }
     }
     public partial class EnumerationOptions
     {
@@ -7601,6 +7400,33 @@ namespace System.IO
         public static System.Threading.Tasks.Task WriteAllTextAsync(string path, string? contents, System.Text.Encoding encoding, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
         public static System.Threading.Tasks.Task WriteAllTextAsync(string path, string? contents, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
     }
+    [System.FlagsAttribute]
+    public enum FileAccess
+    {
+        Read = 1,
+        Write = 2,
+        ReadWrite = 3,
+    }
+    [System.FlagsAttribute]
+    public enum FileAttributes
+    {
+        ReadOnly = 1,
+        Hidden = 2,
+        System = 4,
+        Directory = 16,
+        Archive = 32,
+        Device = 64,
+        Normal = 128,
+        Temporary = 256,
+        SparseFile = 512,
+        ReparsePoint = 1024,
+        Compressed = 2048,
+        Offline = 4096,
+        NotContentIndexed = 8192,
+        Encrypted = 16384,
+        IntegrityStream = 32768,
+        NoScrubData = 131072,
+    }
     public sealed partial class FileInfo : System.IO.FileSystemInfo
     {
         public FileInfo(string fileName) { }
@@ -7632,6 +7458,164 @@ namespace System.IO
         public System.IO.FileInfo Replace(string destinationFileName, string? destinationBackupFileName, bool ignoreMetadataErrors) { throw null; }
         public override string ToString() { throw null; }
     }
+    public partial class FileLoadException : System.IO.IOException
+    {
+        public FileLoadException() { }
+        protected FileLoadException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public FileLoadException(string? message) { }
+        public FileLoadException(string? message, System.Exception? inner) { }
+        public FileLoadException(string? message, string? fileName) { }
+        public FileLoadException(string? message, string? fileName, System.Exception? inner) { }
+        public string? FileName { get { throw null; } }
+        public string? FusionLog { get { throw null; } }
+        public override string Message { get { throw null; } }
+        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public override string ToString() { throw null; }
+    }
+    public enum FileMode
+    {
+        CreateNew = 1,
+        Create = 2,
+        Open = 3,
+        OpenOrCreate = 4,
+        Truncate = 5,
+        Append = 6,
+    }
+    public partial class FileNotFoundException : System.IO.IOException
+    {
+        public FileNotFoundException() { }
+        protected FileNotFoundException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public FileNotFoundException(string? message) { }
+        public FileNotFoundException(string? message, System.Exception? innerException) { }
+        public FileNotFoundException(string? message, string? fileName) { }
+        public FileNotFoundException(string? message, string? fileName, System.Exception? innerException) { }
+        public string? FileName { get { throw null; } }
+        public string? FusionLog { get { throw null; } }
+        public override string Message { get { throw null; } }
+        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public override string ToString() { throw null; }
+    }
+    [System.FlagsAttribute]
+    public enum FileOptions
+    {
+        WriteThrough = -2147483648,
+        None = 0,
+        Encrypted = 16384,
+        DeleteOnClose = 67108864,
+        SequentialScan = 134217728,
+        RandomAccess = 268435456,
+        Asynchronous = 1073741824,
+    }
+    [System.FlagsAttribute]
+    public enum FileShare
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
+        ReadWrite = 3,
+        Delete = 4,
+        Inheritable = 16,
+    }
+    public partial class FileStream : System.IO.Stream
+    {
+        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access) { }
+        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access, int bufferSize) { }
+        public FileStream(Microsoft.Win32.SafeHandles.SafeFileHandle handle, System.IO.FileAccess access, int bufferSize, bool isAsync) { }
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
+        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access) instead.  https://go.microsoft.com/fwlink/?linkid=14202")]
+        public FileStream(System.IntPtr handle, System.IO.FileAccess access) { }
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
+        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
+        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle) { }
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
+        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access, int bufferSize) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
+        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle, int bufferSize) { }
+        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
+        [System.ObsoleteAttribute("This constructor has been deprecated.  Please use new FileStream(SafeFileHandle handle, FileAccess access, int bufferSize, bool isAsync) instead, and optionally make a new SafeFileHandle with ownsHandle=false if needed.  https://go.microsoft.com/fwlink/?linkid=14202")]
+        public FileStream(System.IntPtr handle, System.IO.FileAccess access, bool ownsHandle, int bufferSize, bool isAsync) { }
+        public FileStream(string path, System.IO.FileMode mode) { }
+        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access) { }
+        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share) { }
+        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize) { }
+        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize, bool useAsync) { }
+        public FileStream(string path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, int bufferSize, System.IO.FileOptions options) { }
+        public FileStream(string path, System.IO.FileStreamOptions options) { }
+        public override bool CanRead { get { throw null; } }
+        public override bool CanSeek { get { throw null; } }
+        public override bool CanWrite { get { throw null; } }
+        [System.ObsoleteAttribute("This property has been deprecated.  Please use FileStream's SafeFileHandle property instead.  https://go.microsoft.com/fwlink/?linkid=14202")]
+        public virtual System.IntPtr Handle { get { throw null; } }
+        public virtual bool IsAsync { get { throw null; } }
+        public override long Length { get { throw null; } }
+        public virtual string Name { get { throw null; } }
+        public override long Position { get { throw null; } set { } }
+        public virtual Microsoft.Win32.SafeHandles.SafeFileHandle SafeFileHandle { get { throw null; } }
+        public override System.IAsyncResult BeginRead(byte[] buffer, int offset, int count, System.AsyncCallback? callback, object? state) { throw null; }
+        public override System.IAsyncResult BeginWrite(byte[] buffer, int offset, int count, System.AsyncCallback? callback, object? state) { throw null; }
+        public override System.Threading.Tasks.Task CopyToAsync(System.IO.Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken) { throw null; }
+        protected override void Dispose(bool disposing) { }
+        public override System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
+        public override int EndRead(System.IAsyncResult asyncResult) { throw null; }
+        public override void EndWrite(System.IAsyncResult asyncResult) { }
+        ~FileStream() { }
+        public override void Flush() { }
+        public virtual void Flush(bool flushToDisk) { }
+        public override System.Threading.Tasks.Task FlushAsync(System.Threading.CancellationToken cancellationToken) { throw null; }
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("ios")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("maccatalyst")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("macos")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("tvos")]
+        public virtual void Lock(long position, long length) { }
+        public override int Read(byte[] buffer, int offset, int count) { throw null; }
+        public override int Read(System.Span<byte> buffer) { throw null; }
+        public override System.Threading.Tasks.Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
+        public override System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
+        public override int ReadByte() { throw null; }
+        public override long Seek(long offset, System.IO.SeekOrigin origin) { throw null; }
+        public override void SetLength(long value) { }
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("ios")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("maccatalyst")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("macos")]
+        [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("tvos")]
+        public virtual void Unlock(long position, long length) { }
+        public override void Write(byte[] buffer, int offset, int count) { }
+        public override void Write(System.ReadOnlySpan<byte> buffer) { }
+        public override System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
+        public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
+        public override void WriteByte(byte value) { }
+    }
+    public sealed class FileStreamOptions
+    {
+        public FileStreamOptions() { }
+        public System.IO.FileMode Mode { get; set; }
+        public System.IO.FileAccess Access { get; set; }
+        public System.IO.FileShare Share { get; set; }
+        public System.IO.FileOptions Options { get; set; }
+        public long PreallocationSize { get; set; }
+        public int BufferSize { get; set; }
+    }
+    public abstract partial class FileSystemInfo : System.MarshalByRefObject, System.Runtime.Serialization.ISerializable
+    {
+        protected string FullPath;
+        protected string OriginalPath;
+        protected FileSystemInfo() { }
+        protected FileSystemInfo(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public System.IO.FileAttributes Attributes { get { throw null; } set { } }
+        public System.DateTime CreationTime { get { throw null; } set { } }
+        public System.DateTime CreationTimeUtc { get { throw null; } set { } }
+        public abstract bool Exists { get; }
+        public string Extension { get { throw null; } }
+        public virtual string FullName { get { throw null; } }
+        public System.DateTime LastAccessTime { get { throw null; } set { } }
+        public System.DateTime LastAccessTimeUtc { get { throw null; } set { } }
+        public System.DateTime LastWriteTime { get { throw null; } set { } }
+        public System.DateTime LastWriteTimeUtc { get { throw null; } set { } }
+        public abstract string Name { get; }
+        public abstract void Delete();
+        public virtual void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
+        public void Refresh() { }
+        public override string ToString() { throw null; }
+    }
     public enum HandleInheritability
     {
         None = 0,
@@ -7650,6 +7634,17 @@ namespace System.IO
         public IOException(string? message) { }
         public IOException(string? message, System.Exception? innerException) { }
         public IOException(string? message, int hresult) { }
+    }
+    public enum MatchCasing
+    {
+        PlatformDefault = 0,
+        CaseSensitive = 1,
+        CaseInsensitive = 2,
+    }
+    public enum MatchType
+    {
+        Simple = 0,
+        Win32 = 1,
     }
     public partial class MemoryStream : System.IO.Stream
     {
@@ -7753,6 +7748,11 @@ namespace System.IO
         protected PathTooLongException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
         public PathTooLongException(string? message) { }
         public PathTooLongException(string? message, System.Exception? innerException) { }
+    }
+    public enum SearchOption
+    {
+        TopDirectoryOnly = 0,
+        AllDirectories = 1,
     }
     public enum SeekOrigin
     {
