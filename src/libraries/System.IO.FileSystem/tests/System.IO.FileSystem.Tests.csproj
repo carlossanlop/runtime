@@ -21,6 +21,7 @@
     <Compile Include="FileInfo\GetSetAttributesCommon.cs" />
     <Compile Include="FileInfo\IsReadOnly.cs" />
     <Compile Include="FileInfo\Replace.cs" />
+    <Compile Include="FileInfo\SymbolicLinks.cs" />
     <Compile Include="FileStream\ctor_options_as.cs" />
     <Compile Include="FileStream\Handle.cs" />
     <Compile Include="Directory\GetLogicalDrives.cs" />
@@ -118,6 +119,7 @@
     <Compile Include="File\Move.cs" />
     <Compile Include="File\ReadWriteAllText.cs" />
     <Compile Include="File\ReadWriteAllLines.cs" />
+    <Compile Include="File\SymbolicLinks.cs" />
     <Compile Include="TestData.cs" />
     <Compile Include="UnseekableFileStream.cs" />
     <Compile Include="FSAssert.cs" />

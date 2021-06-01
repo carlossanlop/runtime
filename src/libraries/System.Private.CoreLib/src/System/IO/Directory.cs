@@ -315,5 +315,15 @@ namespace System.IO
         {
             return FileSystem.GetLogicalDrives();
         }
+
+        public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
+        {
+            return null!;
+        }
+
+        public static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget = false)
+        {
+            return null;
+        }
     }
 }

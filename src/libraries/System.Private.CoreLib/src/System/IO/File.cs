@@ -1052,5 +1052,15 @@ namespace System.IO
                 ? Task.FromCanceled(cancellationToken)
                 : InternalWriteAllLinesAsync(AsyncStreamWriter(path, encoding, append: true), contents, cancellationToken);
         }
+
+        public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
+        {
+            return null!;
+        }
+
+        public static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget = false)
+        {
+            return null;
+        }
     }
 }

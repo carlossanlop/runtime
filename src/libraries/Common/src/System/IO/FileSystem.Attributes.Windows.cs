@@ -24,23 +24,23 @@ namespace System.IO
 
         private static bool DirectoryExists(string? path, out int lastError)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             lastError = FillAttributeInfo(path, ref data, returnErrorOnNotFound: true);
 
             return
                 (lastError == 0) &&
-                (data.dwFileAttributes != -1) &&
+                (data.dwFileAttributes != 0) &&
                 ((data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) != 0);
         }
 
         public static bool FileExists(string fullPath)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             int errorCode = FillAttributeInfo(fullPath, ref data, returnErrorOnNotFound: true);
 
             return
                 (errorCode == 0) &&
-                (data.dwFileAttributes != -1) &&
+                (data.dwFileAttributes != 0) &&
                 ((data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) == 0);
         }
 
@@ -49,9 +49,9 @@ namespace System.IO
         /// classes should use -1 as the uninitialized state for dataInitialized.
         /// </summary>
         /// <param name="path">The file path from which the file attribute information will be filled.</param>
-        /// <param name="data">A struct that will contain the attribute information.</param>
+        /// <param name="findData">A struct that will contain the extended attribute information.</param>
         /// <param name="returnErrorOnNotFound">Return the error code for not found errors?</param>
-        internal static int FillAttributeInfo(string? path, ref Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data, bool returnErrorOnNotFound)
+        internal static int FillAttributeInfo(string? path, ref Interop.Kernel32.WIN32_FIND_DATA findData, bool returnErrorOnNotFound)
         {
             int errorCode = Interop.Errors.ERROR_SUCCESS;
 
@@ -60,6 +60,7 @@ namespace System.IO
 
             using (DisableMediaInsertionPrompt.Create())
             {
+                Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
                 if (!Interop.Kernel32.GetFileAttributesEx(path, Interop.Kernel32.GET_FILEEX_INFO_LEVELS.GetFileExInfoStandard, ref data))
                 {
                     errorCode = Marshal.GetLastWin32Error();
@@ -95,7 +96,6 @@ namespace System.IO
                         // pagefile.sys case. As such we're probably stuck filtering out specific
                         // cases that we know we don't want to retry on.
 
-                        Interop.Kernel32.WIN32_FIND_DATA findData = default;
                         using (SafeFindHandle handle = Interop.Kernel32.FindFirstFile(path!, ref findData))
                         {
                             if (handle.IsInvalid)
@@ -105,7 +105,6 @@ namespace System.IO
                             else
                             {
                                 errorCode = Interop.Errors.ERROR_SUCCESS;
-                                data.PopulateFrom(ref findData);
                             }
                         }
                     }
@@ -119,8 +118,9 @@ namespace System.IO
                     case Interop.Errors.ERROR_FILE_NOT_FOUND:
                     case Interop.Errors.ERROR_PATH_NOT_FOUND:
                     case Interop.Errors.ERROR_NOT_READY: // Removable media not ready
-                        // Return default value for backward compatibility
-                        data.dwFileAttributes = -1;
+                        // For backwards compatibility, if this value gets cast to a FileAttributes flag enum value,
+                        // it needs to return (FileAttributes)(-1) when the value is 0.
+                        findData.dwFileAttributes = 0;
                         return Interop.Errors.ERROR_SUCCESS;
                 }
             }

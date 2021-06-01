@@ -111,5 +111,37 @@ namespace System.IO
         /// Returns the original path. Use FullName or Name properties for the full path or file/directory name.
         /// </summary>
         public override string ToString() => OriginalPath ?? string.Empty;
+
+        /// <summary>
+        /// Creates a symbolic link that points to the specified target.
+        /// </summary>
+        /// <param name="pathToTarget">The path, absolute or relative, of the symbolic link target.</param>
+        public void CreateAsSymbolicLink(string pathToTarget)
+        {
+            if (pathToTarget == null)
+            {
+                throw new ArgumentNullException(nameof(pathToTarget));
+            }
+            else if (pathToTarget.Length == 0)
+            {
+                throw new ArgumentException(SR.Argument_EmptyPath);
+            }
+
+            bool isDirectory = this is DirectoryInfo;
+
+            CreateAsSymbolicLinkInternal(pathToTarget, isDirectory);
+        }
+
+        /// <summary>
+        /// If the current <see cref="FileSystemInfo"/> wraps a link, returns a <see cref="FileSystemInfo"/> instance that wraps the target.
+        /// </summary>
+        /// <param name="returnFinalTarget"><see langword="true"/> if the returned instance should wrap the final target in a chain of links; <see langword="false"/> if the returned instance should wrap the immediate target.</param>
+        /// <returns>A <see cref="FileSystemInfo"/> representing the specified link target.</returns>
+        public FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false) => ResolveLinkTargetInternal(returnFinalTarget);
+
+        /// <summary>
+        /// If the current <see cref="FileSystemInfo"/> wraps a link, returns the path of the target file, which can be relative or absolute.
+        /// </summary>
+        public string? LinkTarget { get; }
     }
 }

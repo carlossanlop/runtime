@@ -17,8 +17,8 @@ namespace System.IO
 {
     public partial class FileSystemInfo
     {
-        // Cache the file/directory information
-        private Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA _data;
+        // Cache the extended file/directory information
+        private Interop.Kernel32.WIN32_FIND_DATA _data;
 
         // Cache any error retrieving the file/directory information
         // We use this field in conjunction with the Refresh method which should never throw.
@@ -49,7 +49,15 @@ namespace System.IO
 
         internal unsafe void Init(Interop.NtDll.FILE_FULL_DIR_INFORMATION* info)
         {
-            _data.dwFileAttributes = (int)info->FileAttributes;
+            int findAttributes = (int)info->FileAttributes;
+            if (findAttributes == -1)
+            {
+                _data.dwFileAttributes = 0;
+            }
+            else
+            {
+                _data.dwFileAttributes = (uint)findAttributes;
+            }
             _data.ftCreationTime = *((Interop.Kernel32.FILE_TIME*)&info->CreationTime);
             _data.ftLastAccessTime = *((Interop.Kernel32.FILE_TIME*)&info->LastAccessTime);
             _data.ftLastWriteTime = *((Interop.Kernel32.FILE_TIME*)&info->LastWriteTime);
@@ -63,6 +71,11 @@ namespace System.IO
             get
             {
                 EnsureDataInitialized();
+                if (_data.dwFileAttributes == 0)
+                {
+                    // Backwards compatibility
+                    return (FileAttributes)(-1);
+                }
                 return (FileAttributes)_data.dwFileAttributes;
             }
             set
@@ -85,7 +98,7 @@ namespace System.IO
                     // but Exists is supposed to return true or false.
                     return false;
                 }
-                return (_data.dwFileAttributes != -1) && ((this is DirectoryInfo) == ((_data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) == Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY));
+                return (_data.dwFileAttributes != 0) && ((this is DirectoryInfo) == ((_data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) == Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY));
             }
         }
 
@@ -163,5 +176,47 @@ namespace System.IO
         // act on the path normally (open streams/writers/etc.)
         internal string NormalizedPath
             => PathInternal.EndsWithPeriodOrSpace(FullPath) ? PathInternal.EnsureExtendedPrefix(FullPath) : FullPath;
+
+        private void CreateAsSymbolicLinkInternal(string pathToTarget, bool isDirectory)
+        {
+            if (!Interop.Kernel32.CreateSymbolicLink(FullPath, pathToTarget, isDirectory))
+            {
+                throw Win32Marshal.GetExceptionForLastWin32Error(FullPath);
+            }
+            Invalidate();
+        }
+
+        private FileSystemInfo? ResolveLinkTargetInternal(bool returnFinalTarget)
+        {
+            //if (TypeOfLink != LinkType.None)
+            //{
+
+            //}
+
+            return null;
+        }
+
+        //private LinkType TypeOfLink
+        //{
+        //    get
+        //    {
+        //        if (Attributes.HasFlag(FileAttributes.ReparsePoint))
+        //        {
+        //            switch (_data.dwReserved0)
+        //            {
+        //                case 0xA0000003: // IO_REPARSE_TAG_MOUNT_POINT
+        //                    return LinkType.Junction;
+        //                case 0xA000000C: // IO_REPARSE_TAG_SYMLINK
+        //                    return LinkType.SymbolicLink;
+        //                case 0x8000001B: // IO_REPARSE_TAG_APPEXECLINK
+        //                    return LinkType.AppExecLink;
+        //                default:
+        //                    break;
+        //            }
+        //        }
+
+        //        return LinkType.None;
+        //    }
+        //}
     }
 }

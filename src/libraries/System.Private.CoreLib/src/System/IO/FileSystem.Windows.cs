@@ -71,17 +71,23 @@ namespace System.IO
 
         public static FileAttributes GetAttributes(string fullPath)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             int errorCode = FillAttributeInfo(fullPath, ref data, returnErrorOnNotFound: true);
             if (errorCode != 0)
                 throw Win32Marshal.GetExceptionForWin32Error(errorCode, fullPath);
 
-            return (FileAttributes)data.dwFileAttributes;
+            if (data.dwFileAttributes != 0)
+            {
+                return (FileAttributes)(data.dwFileAttributes);
+            }
+
+            // Backwards compatibility
+            return (FileAttributes)(-1);
         }
 
         public static DateTimeOffset GetCreationTime(string fullPath)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             int errorCode = FillAttributeInfo(fullPath, ref data, returnErrorOnNotFound: false);
             if (errorCode != 0)
                 throw Win32Marshal.GetExceptionForWin32Error(errorCode, fullPath);
@@ -98,7 +104,7 @@ namespace System.IO
 
         public static DateTimeOffset GetLastAccessTime(string fullPath)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             int errorCode = FillAttributeInfo(fullPath, ref data, returnErrorOnNotFound: false);
             if (errorCode != 0)
                 throw Win32Marshal.GetExceptionForWin32Error(errorCode, fullPath);
@@ -108,7 +114,7 @@ namespace System.IO
 
         public static DateTimeOffset GetLastWriteTime(string fullPath)
         {
-            Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
+            Interop.Kernel32.WIN32_FIND_DATA data = default;
             int errorCode = FillAttributeInfo(fullPath, ref data, returnErrorOnNotFound: false);
             if (errorCode != 0)
                 throw Win32Marshal.GetExceptionForWin32Error(errorCode, fullPath);
