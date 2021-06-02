@@ -109,14 +109,30 @@ namespace System.IO
 
         /// <summary>
         /// If this <see cref="FileSystemInfo"/> instance represents a link, returns the link target's path.
-        /// If the link does not exist, returns <see langword="null"/>.
+        /// If a link does not exist in <see cref="FullName"/>, or this instance does not represent a link, returns <see langword="null"/>.
         /// </summary>
-        public string? LinkTarget => LinkTargetInternal;
+        public string? LinkTarget
+        {
+            get
+            {
+                if (!Exists)
+                {
+                    return null;
+                }
+
+                return FileSystem.GetLinkTarget(FullPath);
+            }
+        }
 
         /// <summary>
         /// Creates a symbolic link located in <see cref="FullName"/> that points to the specified <paramref name="pathToTarget"/>.
         /// </summary>
         /// <param name="pathToTarget">The path of the symbolic link target.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="pathToTarget"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="pathToTarget"/> is empty.</exception>
+        /// <exception cref="IOException">A file or directory already exists in the location of <see cref="FullName"/>.
+        /// -or-
+        /// An I/O error occurred.</exception>
         public void CreateAsSymbolicLink(string pathToTarget)
         {
             if (pathToTarget == null)
@@ -132,15 +148,24 @@ namespace System.IO
                 throw new IOException(SR.Format(SR.IO_AlreadyExists_Name, FullName));
             }
 
-            CreateAsSymbolicLinkInternal(pathToTarget);
+            FileSystem.CreateSymbolicLink(FullPath, pathToTarget, this is DirectoryInfo);
         }
 
         /// <summary>
-        /// Gets the target of the specified symbolic link.
+        /// Gets the target of the specified link.
         /// </summary>
         /// <param name="returnFinalTarget"><see langword="true"/> to follow links to the final target; <see langword="false"/> to return the immediate next link.</param>
-        /// <returns>A <see cref="FileInfo"/> instance if the symbolic link exists, independently if the target exists or not. <see langword="null"/> if the symbolic link does not exist.</returns>
-        public System.IO.FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false) => ResolveLinkTargetInternal(returnFinalTarget);
+        /// <returns>A <see cref="FileSystemInfo"/> instance if the link exists, independently if the target exists or not; <see langword="null"/> if a link does not exist
+        /// in <see cref="FullName"/>, or this instance does not represent a link.</returns>
+        public System.IO.FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false)
+        {
+            if (!Exists)
+            {
+                return null;
+            }
+
+            return FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget);
+        }
 
 
         /// <summary>
