@@ -117,7 +117,23 @@ namespace System.IO
         /// Creates a symbolic link located in <see cref="FullName"/> that points to the specified <paramref name="pathToTarget"/>.
         /// </summary>
         /// <param name="pathToTarget">The path of the symbolic link target.</param>
-        public void CreateAsSymbolicLink(string pathToTarget) => CreateAsSymbolicLinkInternal(pathToTarget);
+        public void CreateAsSymbolicLink(string pathToTarget)
+        {
+            if (pathToTarget == null)
+            {
+                throw new ArgumentNullException(nameof(pathToTarget)));
+            }
+            if (pathToTarget.Length == 0)
+            {
+                throw new ArgumentException(nameof(pathToTarget));
+            }
+            if (Exists)
+            {
+                throw new IOException(SR.Format(SR.IO_AlreadyExists_Name, FullName));
+            }
+
+            CreateAsSymbolicLinkInternal(pathToTarget);
+        }
 
         /// <summary>
         /// Gets the target of the specified symbolic link.
