@@ -121,11 +121,11 @@ namespace System.IO
         {
             if (pathToTarget == null)
             {
-                throw new ArgumentNullException(nameof(pathToTarget)));
+                throw new ArgumentNullException(nameof(pathToTarget));
             }
             if (pathToTarget.Length == 0)
             {
-                throw new ArgumentException(nameof(pathToTarget));
+                throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(pathToTarget)));
             }
             if (Exists)
             {
