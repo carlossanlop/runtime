@@ -163,5 +163,9 @@ namespace System.IO
         // act on the path normally (open streams/writers/etc.)
         internal string NormalizedPath
             => PathInternal.EndsWithPeriodOrSpace(FullPath) ? PathInternal.EnsureExtendedPrefix(FullPath) : FullPath;
+
+        internal string? LinkTargetInternal { get { return null; } }
+        internal void CreateAsSymbolicLinkInternal(string pathToTarget) { }
+        internal System.IO.FileSystemInfo? ResolveLinkTargetInternal(bool returnFinalTarget) { return null; }
     }
 }

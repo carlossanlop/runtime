@@ -81,5 +81,9 @@ namespace System.IO
 
         // There is no special handling for Unix- see Windows code for the reason we do this
         internal string NormalizedPath => FullPath;
+
+        internal string? LinkTargetInternal { get { return null; } }
+        internal void CreateAsSymbolicLinkInternal(string pathToTarget) { }
+        internal System.IO.FileSystemInfo? ResolveLinkTargetInternal(bool returnFinalTarget) { return null; }
     }
 }
