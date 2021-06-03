@@ -408,16 +408,16 @@ namespace System.IO
         public static string[] GetLogicalDrives()
             => DriveInfoInternal.GetLogicalDrives();
 
-        internal static string GetLinkTarget(ReadOnlySpan<char> linkPath)
+        internal static string? GetLinkTarget(string linkPath)
         {
-            return null!;
+            return null;
         }
 
-        internal static void CreateSymbolicLink(ReadOnlySpan<char> target, ReadOnlySpan<char> linkPath, bool isDirectory)
+        internal static void CreateSymbolicLink(string target, string linkPath, bool isDirectory)
         {
         }
 
-        internal static FileSystemInfo? ResolveLinkTarget(ReadOnlySpan<char> linkPath, bool returnFinalTarget)
+        internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
             return null;
         }

@@ -164,7 +164,7 @@ namespace System.IO
                 return null;
             }
 
-            return FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget);
+            return FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
         }
 
 

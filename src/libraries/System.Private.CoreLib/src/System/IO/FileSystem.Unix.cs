@@ -11,6 +11,10 @@ namespace System.IO
     {
         internal const int DefaultBufferSize = 4096;
 
+        // On Linux, the maximum number of symbolic links that are followed while resolving a pathname is 40.
+        // See: https://man7.org/linux/man-pages/man7/path_resolution.7.html
+        private const int MaxFollowedLinks = 40;
+
         public static void CopyFile(string sourceFullPath, string destFullPath, bool overwrite)
         {
             // If the destination path points to a directory, we throw to match Windows behaviour
@@ -531,17 +535,78 @@ namespace System.IO
             return DriveInfoInternal.GetLogicalDrives();
         }
 
-        internal static string GetLinkTarget(ReadOnlySpan<char> linkPath)
+        /// <summary>Gets the path of the target of the specified link.</summary>
+        /// <param name="linkPath">A path to a link file.</param>
+        /// <returns>If the specified <paramref name="linkPath"/> represents a link file and it exists, this method returns the link's target path.
+        /// If the specified <paramref name="linkPath"/> is not a link, or the file does not exist, this method returns <see langword="null"/>.</returns>
+        internal static string? GetLinkTarget(string linkPath)
         {
-            return null!;
+            if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus status) == 0 &&
+                    (status.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
+            {
+                return Interop.Sys.ReadLink(linkPath);
+            }
+            return null;
         }
 
-        internal static void CreateSymbolicLink(ReadOnlySpan<char> target, ReadOnlySpan<char> linkPath, bool isDirectory)
+        internal static void CreateSymbolicLink(string target, string linkPath, bool isDirectory)
         {
+            if (isDirectory && DirectoryExists(linkPath))
+            {
+                throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
+            }
+            else if (!isDirectory && FileExists(linkPath))
+            {
+                throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
+            }
+
+            if (Interop.Sys.SymLink(target, linkPath) < 0)
+            {
+                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
+            }
         }
 
-        internal static FileSystemInfo? ResolveLinkTarget(ReadOnlySpan<char> linkPath, bool returnFinalTarget)
+        /// <summary>Gets the target of the specified link path.</summary>
+        /// <param name="linkPath">A path to a link file.</param>
+        /// <param name="returnFinalTarget"><see langword="true"/> to return the final target file or directory in a chain of links; <see langword="false"/> to
+        /// return the immediate next target.</param>
+        /// <param name="isDirectory"><see langword="true"/> if the link points to a directory; <see langword="false"/> if the link points to a file.</param>
+        /// <returns>If the specified <paramref name="linkPath"/> represents a link file and it exists, returns a <see cref="FileInfo"/> if
+        /// <paramref name="isDirectory"/> is <see langword="false"/>, or a <see cref="DirectoryInfo"/> if <paramref name="isDirectory"/> is <see langword="true"/>,
+        /// independently if the target file/directory exists or not.
+        /// If the specified <paramref name="linkPath"/> is not a link file or it does not exist, returns <see langword="null"/>.</returns>
+        internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
+            // 40 is the limit in symbolic link chain resolution
+            int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
+
+            int visitCount = 0;
+            string currentPath = linkPath;
+            string? linkTarget = null;
+            while (visitCount < maxVisits)
+            {
+                // Gets the path to the target, independently if it exists or not
+                linkTarget = GetLinkTarget(currentPath);
+                // Null means currentPath does not exist or is not a link
+                if (linkTarget == null)
+                {
+                    break;
+                }
+                // Non-null means currentPath represents an existing link
+                currentPath = linkTarget;
+                visitCount++;
+            }
+
+            // If we surpassed the visit limit, it means we couldn't reach the final target
+            // Or if linkTarget is null, it means the last analyzer file in the link chain either didn't exist or wasn't a link,
+            // which should especially apply to the first file in the link chain
+            if (visitCount < maxVisits && linkTarget != null)
+            {
+                return isDirectory ?
+                        new DirectoryInfo(linkTarget) :
+                        new FileInfo(linkTarget);
+            }
+
             return null;
         }
     }
