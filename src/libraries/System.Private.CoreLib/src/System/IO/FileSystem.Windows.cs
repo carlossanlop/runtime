@@ -413,7 +413,7 @@ namespace System.IO
             return null;
         }
 
-        internal static void CreateSymbolicLink(string target, string linkPath, bool isDirectory)
+        internal static void CreateSymbolicLink(string linkPath, string target, bool isDirectory)
         {
         }
 

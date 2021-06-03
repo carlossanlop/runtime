@@ -19,9 +19,19 @@ namespace System.IO
 
         internal string _name = null!; // Fields initiated in derived classes
 
+        private string? _linkTarget;
+        private FileSystemInfo? _resolvedLinkTarget;
+
         protected FileSystemInfo(SerializationInfo info, StreamingContext context)
         {
             throw new PlatformNotSupportedException();
+        }
+
+        internal void Invalidate()
+        {
+            _linkTarget = null;
+            _resolvedLinkTarget = null;
+            InvalidateCore();
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -115,12 +125,12 @@ namespace System.IO
         {
             get
             {
-                if (!Exists)
+                if (_linkTarget == null && Exists)
                 {
-                    return null;
+                    _linkTarget = FileSystem.GetLinkTarget(FullPath);
                 }
 
-                return FileSystem.GetLinkTarget(FullPath);
+                return _linkTarget;
             }
         }
 
@@ -135,20 +145,8 @@ namespace System.IO
         /// An I/O error occurred.</exception>
         public void CreateAsSymbolicLink(string pathToTarget)
         {
-            if (pathToTarget == null)
-            {
-                throw new ArgumentNullException(nameof(pathToTarget));
-            }
-            if (pathToTarget.Length == 0)
-            {
-                throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(pathToTarget)));
-            }
-            if (Exists)
-            {
-                throw new IOException(SR.Format(SR.IO_AlreadyExists_Name, FullName));
-            }
-
             FileSystem.CreateSymbolicLink(FullPath, pathToTarget, this is DirectoryInfo);
+            Invalidate();
         }
 
         /// <summary>
@@ -157,14 +155,14 @@ namespace System.IO
         /// <param name="returnFinalTarget"><see langword="true"/> to follow links to the final target; <see langword="false"/> to return the immediate next link.</param>
         /// <returns>A <see cref="FileSystemInfo"/> instance if the link exists, independently if the target exists or not; <see langword="null"/> if a link does not exist
         /// in <see cref="FullName"/>, or this instance does not represent a link.</returns>
-        public System.IO.FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false)
+        public FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false)
         {
-            if (!Exists)
+            if (_resolvedLinkTarget == null && Exists)
             {
-                return null;
+                _resolvedLinkTarget = FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
             }
 
-            return FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
+            return _resolvedLinkTarget;
         }
 
 

@@ -77,10 +77,10 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateAbsoluteSymbolicLink()
         {
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             Directory.CreateDirectory(targetPath);
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(targetPath);
@@ -99,10 +99,10 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateRelativeSymbolicLink()
         {
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             Directory.CreateDirectory(targetPath);
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(targetPath);
@@ -121,13 +121,12 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_NonExistentTarget()
         {
-            string nonExistentTargetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string nonExistentTargetPath = Path.Join(TestDirectory, GetTestFileName());
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(nonExistentTargetPath);
-
             Assert.True(linkInfo.Exists);
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
@@ -141,19 +140,19 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_WrongTargetType()
         {
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             File.Create(targetPath).Dispose();
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
 
-            Assert.Throws<Exception>(() => linkInfo.CreateAsSymbolicLink(targetPath));
+            Assert.Throws<IOException>(() => linkInfo.CreateAsSymbolicLink(targetPath));
         }
 
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void GetTargetInfo_NonExistentLink()
         {
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
             Assert.Null(linkInfo.ResolveLinkTarget());
         }
@@ -163,11 +162,11 @@ namespace System.IO.Tests
         {
             // link1 -> link2 -> target
 
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             Directory.CreateDirectory(targetPath);
 
-            string link2Path = Path.Combine(TestDirectory, GetTestFileName());
-            string link1Path = Path.Combine(TestDirectory, GetTestFileName());
+            string link2Path = Path.Join(TestDirectory, GetTestFileName());
+            string link1Path = Path.Join(TestDirectory, GetTestFileName());
 
             // link to target
             DirectoryInfo link2Info = new DirectoryInfo(link2Path);
@@ -204,8 +203,8 @@ namespace System.IO.Tests
             //   ^        /
             //    \______/
 
-            string link2Path = Path.Combine(TestDirectory, GetTestFileName());
-            string link1Path = Path.Combine(TestDirectory, GetTestFileName());
+            string link2Path = Path.Join(TestDirectory, GetTestFileName());
+            string link1Path = Path.Join(TestDirectory, GetTestFileName());
 
             DirectoryInfo link1Info = new DirectoryInfo(link1Path);
             link1Info.CreateAsSymbolicLink(link1Path);

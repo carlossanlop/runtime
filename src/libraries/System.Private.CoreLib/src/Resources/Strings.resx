@@ -2329,6 +2329,9 @@
   <data name="IndexOutOfRange_UMSPosition" xml:space="preserve">
     <value>Unmanaged memory stream position was beyond the capacity of the stream.</value>
   </data>
+  <data name="IndexOutOfRange_SymbolicLinkLevels" xml:space="preserve">
+    <value>Too many levels of symbolic links in '{0}''.</value>
+  </data>
   <data name="InsufficientMemory_MemFailPoint" xml:space="preserve">
     <value>Insufficient available memory to meet the expected demands of an operation at this time.  Please try again later.</value>
   </data>
@@ -2655,6 +2658,9 @@
   </data>
   <data name="IO_DirectoryExists_Name" xml:space="preserve">
     <value>The directory '{0}' already exists.</value>
+  </data>
+  <data name="IO_InconsistentSymlinkType" xml:space="preserve">
+    <value>The instance type is inconsistent with the symbolic link filesystem type.</value>
   </data>
   <data name="IO_FileExists_Name" xml:space="preserve">
     <value>The file '{0}' already exists.</value>

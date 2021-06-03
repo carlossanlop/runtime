@@ -1061,8 +1061,9 @@ namespace System.IO
         /// <returns>A <see cref="FileInfo"/> instance that wraps the newly created file symbolic link.</returns>
         public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
         {
-            FileSystem.CreateSymbolicLink(pathToTarget, path, isDirectory: false);
-            return new FileInfo(path);
+            string fullPath = Path.GetFullPath(path);
+            FileSystem.CreateSymbolicLink(fullPath, pathToTarget, isDirectory: false);
+            return new FileInfo(path, fullPath, isNormalized: true);
         }
 
         /// <summary>

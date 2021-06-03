@@ -324,8 +324,9 @@ namespace System.IO
         /// <returns>A <see cref="DirectoryInfo"/> instance that wraps the newly created directory symbolic link.</returns>
         public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
         {
-            FileSystem.CreateSymbolicLink(pathToTarget, path, isDirectory: true);
-            return new DirectoryInfo(path);
+            string fullPath = Path.GetFullPath(path);
+            FileSystem.CreateSymbolicLink(fullPath, pathToTarget, isDirectory: true);
+            return new DirectoryInfo(path, fullPath, isNormalized: true);
         }
 
         /// <summary>

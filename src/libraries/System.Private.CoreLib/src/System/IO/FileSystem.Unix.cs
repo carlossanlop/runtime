@@ -549,16 +549,51 @@ namespace System.IO
             return null;
         }
 
-        internal static void CreateSymbolicLink(string target, string linkPath, bool isDirectory)
+        internal static void CreateSymbolicLink(string linkPath, string target, bool isDirectory)
         {
-            if (isDirectory && DirectoryExists(linkPath))
+            if (linkPath == null)
             {
-                throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
+                throw new ArgumentNullException(nameof(linkPath));
             }
-            else if (!isDirectory && FileExists(linkPath))
+            else if (linkPath.Length == 0)
             {
-                throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
+                throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(linkPath)));
             }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+            else if (target.Length == 0)
+            {
+                throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(target)));
+            }
+
+
+            if (isDirectory)
+            {
+                if (DirectoryExists(linkPath))
+                {
+                    throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
+                }
+                if (FileExists(target))
+                {
+                    throw new IOException(SR.IO_InconsistentSymlinkType);
+                }
+            }
+            else
+            {
+                if (FileExists(linkPath))
+                {
+                    throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
+                }
+                if (DirectoryExists(target))
+                {
+                    throw new IOException(SR.IO_InconsistentSymlinkType);
+                }
+            }
+
+            Debug.Assert(!PathInternal.IsPartiallyQualified(linkPath));
 
             if (Interop.Sys.SymLink(target, linkPath) < 0)
             {
@@ -577,37 +612,51 @@ namespace System.IO
         /// If the specified <paramref name="linkPath"/> is not a link file or it does not exist, returns <see langword="null"/>.</returns>
         internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
+            Debug.Assert(!PathInternal.IsPartiallyQualified(linkPath));
+
+            string? current = GetLinkTarget(linkPath);
+
+            // linkPath either does not exist or is not a symbolic link
+            if (current == null)
+            {
+                return null;
+            }
+
             // 40 is the limit in symbolic link chain resolution
             int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
-
             int visitCount = 0;
-            string currentPath = linkPath;
-            string? linkTarget = null;
+            string? next = null;
+            string prefix = Path.GetDirectoryName(linkPath)!;
+
             while (visitCount < maxVisits)
             {
                 // Gets the path to the target, independently if it exists or not
-                linkTarget = GetLinkTarget(currentPath);
+                next = GetLinkTarget(Path.Join(prefix, current));
                 // Null means currentPath does not exist or is not a link
-                if (linkTarget == null)
+                if (next == null)
                 {
                     break;
                 }
+                // The new prefix is additive, even if it contains relative paths
+                prefix = Path.Join(prefix, Path.GetDirectoryName(next));
+
                 // Non-null means currentPath represents an existing link
-                currentPath = linkTarget;
+                current = next;
+
                 visitCount++;
             }
 
             // If we surpassed the visit limit, it means we couldn't reach the final target
-            // Or if linkTarget is null, it means the last analyzer file in the link chain either didn't exist or wasn't a link,
-            // which should especially apply to the first file in the link chain
-            if (visitCount < maxVisits && linkTarget != null)
+            if (visitCount >= maxVisits)
             {
-                return isDirectory ?
-                        new DirectoryInfo(linkTarget) :
-                        new FileInfo(linkTarget);
+                throw new IndexOutOfRangeException(SR.Format(SR.IndexOutOfRange_SymbolicLinkLevels, linkPath));
             }
 
-            return null;
+            Debug.Assert(current != null);
+
+            return isDirectory ?
+                    new DirectoryInfo(Path.Join(prefix, current)) :
+                    new FileInfo(Path.Join(prefix, current));
         }
     }
 }

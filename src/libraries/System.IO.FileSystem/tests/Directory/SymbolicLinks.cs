@@ -38,10 +38,10 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink()
         {
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             Directory.CreateDirectory(targetPath);
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             var linkInfo = Directory.CreateSymbolicLink(linkPath, targetPath);
 
             Assert.True(linkInfo is DirectoryInfo);
@@ -58,9 +58,9 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_NonExistentTarget()
         {
-            string nonExistentTargetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string nonExistentTargetPath = Path.Join(TestDirectory, GetTestFileName());
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             var linkInfo = Directory.CreateSymbolicLink(linkPath, nonExistentTargetPath);
 
             Assert.True(linkInfo is DirectoryInfo);
@@ -77,17 +77,17 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_WrongTargetType()
         {
-            string targetPath = Path.Combine(TestDirectory, GetTestFileName());
+            string targetPath = Path.Join(TestDirectory, GetTestFileName());
             File.Create(targetPath).Dispose();
 
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
-            Assert.Throws<Exception>(() => Directory.CreateSymbolicLink(linkPath, targetPath));
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
+            Assert.Throws<IOException>(() => Directory.CreateSymbolicLink(linkPath, targetPath));
         }
 
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void GetTargetInfo_NonExistentLink()
         {
-            string linkPath = Path.Combine(TestDirectory, GetTestFileName());
+            string linkPath = Path.Join(TestDirectory, GetTestFileName());
             Assert.Null(Directory.ResolveLinkTarget(linkPath));
         }
     }
