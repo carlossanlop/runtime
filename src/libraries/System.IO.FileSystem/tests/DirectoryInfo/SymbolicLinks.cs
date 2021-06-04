@@ -81,7 +81,7 @@ namespace System.IO.Tests
             Directory.CreateDirectory(targetPath);
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
+            var linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(targetPath);
 
@@ -103,7 +103,7 @@ namespace System.IO.Tests
             Directory.CreateDirectory(targetPath);
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
+            var linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(targetPath);
 
@@ -124,14 +124,15 @@ namespace System.IO.Tests
             string nonExistentTargetPath = Path.Join(TestDirectory, GetTestFileName());
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
+            var linkInfo = new DirectoryInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(nonExistentTargetPath);
-            Assert.True(linkInfo.Exists);
+            Assert.False(linkInfo.Exists); // For directory symlinks, we return the exists info from the target
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             var target = linkInfo.ResolveLinkTarget();
 
+            Assert.NotNull(target);
             Assert.True(target is DirectoryInfo);
             Assert.False(target.Exists);
             Assert.Equal(linkInfo.LinkTarget, target.FullName);
@@ -144,7 +145,7 @@ namespace System.IO.Tests
             File.Create(targetPath).Dispose();
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
+            var linkInfo = new DirectoryInfo(linkPath);
 
             Assert.Throws<IOException>(() => linkInfo.CreateAsSymbolicLink(targetPath));
         }
@@ -153,7 +154,7 @@ namespace System.IO.Tests
         public void GetTargetInfo_NonExistentLink()
         {
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            DirectoryInfo linkInfo = new DirectoryInfo(linkPath);
+            var linkInfo = new DirectoryInfo(linkPath);
             Assert.Null(linkInfo.ResolveLinkTarget());
         }
 
@@ -169,11 +170,11 @@ namespace System.IO.Tests
             string link1Path = Path.Join(TestDirectory, GetTestFileName());
 
             // link to target
-            DirectoryInfo link2Info = new DirectoryInfo(link2Path);
+            var link2Info = new DirectoryInfo(link2Path);
             link2Info.CreateAsSymbolicLink(targetPath);
 
             // link to link2
-            DirectoryInfo link1Info = new DirectoryInfo(link1Path);
+            var link1Info = new DirectoryInfo(link1Path);
             link1Info.CreateAsSymbolicLink(link2Path);
 
             Assert.True(link1Info.Exists);
@@ -206,34 +207,19 @@ namespace System.IO.Tests
             string link2Path = Path.Join(TestDirectory, GetTestFileName());
             string link1Path = Path.Join(TestDirectory, GetTestFileName());
 
-            DirectoryInfo link1Info = new DirectoryInfo(link1Path);
-            link1Info.CreateAsSymbolicLink(link1Path);
+            var link1Info = new DirectoryInfo(link1Path);
+            link1Info.CreateAsSymbolicLink(link2Path);
 
-            Assert.True(link1Info is DirectoryInfo);
-            Assert.True(link1Info.Exists);
-            Assert.True(link1Info.Attributes.HasFlag(FileAttributes.ReparsePoint));
-
-            DirectoryInfo link2Info = new DirectoryInfo(link2Path);
+            var link2Info = new DirectoryInfo(link2Path);
             link2Info.CreateAsSymbolicLink(link1Path);
 
-            Assert.True(link2Info is DirectoryInfo);
-            Assert.True(link2Info.Exists);
-            Assert.True(link2Info.Attributes.HasFlag(FileAttributes.ReparsePoint));
-
-            // Can get target without following symlinks
+            // Can get targets without following symlinks
             var link1Target = link1Info.ResolveLinkTarget();
-            Assert.True(link1Target is DirectoryInfo);
-            Assert.True(link1Target.Exists);
-            Assert.True(link1Target.Attributes.HasFlag(FileAttributes.ReparsePoint));
-
             var link2Target = link2Info.ResolveLinkTarget();
-            Assert.True(link2Target is DirectoryInfo);
-            Assert.True(link2Target.Exists);
-            Assert.True(link2Target.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             // Cannot get target when following symlinks
-            Assert.Throws<Exception>(() => link1Info.ResolveLinkTarget(returnFinalTarget: true));
-            Assert.Throws<Exception>(() => link2Info.ResolveLinkTarget(returnFinalTarget: true));
+            Assert.Throws<IndexOutOfRangeException>(() => link1Info.ResolveLinkTarget(returnFinalTarget: true));
+            Assert.Throws<IndexOutOfRangeException>(() => link2Info.ResolveLinkTarget(returnFinalTarget: true));
         }
     }
 }

@@ -20,7 +20,6 @@ namespace System.IO
         internal string _name = null!; // Fields initiated in derived classes
 
         private string? _linkTarget;
-        private FileSystemInfo? _resolvedLinkTarget;
 
         protected FileSystemInfo(SerializationInfo info, StreamingContext context)
         {
@@ -30,7 +29,6 @@ namespace System.IO
         internal void Invalidate()
         {
             _linkTarget = null;
-            _resolvedLinkTarget = null;
             InvalidateCore();
         }
 
@@ -125,7 +123,7 @@ namespace System.IO
         {
             get
             {
-                if (_linkTarget == null && Exists)
+                if (_linkTarget == null)
                 {
                     _linkTarget = FileSystem.GetLinkTarget(FullPath);
                 }
@@ -155,16 +153,7 @@ namespace System.IO
         /// <param name="returnFinalTarget"><see langword="true"/> to follow links to the final target; <see langword="false"/> to return the immediate next link.</param>
         /// <returns>A <see cref="FileSystemInfo"/> instance if the link exists, independently if the target exists or not; <see langword="null"/> if a link does not exist
         /// in <see cref="FullName"/>, or this instance does not represent a link.</returns>
-        public FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false)
-        {
-            if (_resolvedLinkTarget == null && Exists)
-            {
-                _resolvedLinkTarget = FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
-            }
-
-            return _resolvedLinkTarget;
-        }
-
+        public FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false) => FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
 
         /// <summary>
         /// Returns the original path. Use FullName or Name properties for the full path or file/directory name.

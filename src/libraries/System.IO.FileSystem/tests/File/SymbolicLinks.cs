@@ -36,7 +36,7 @@ namespace System.IO.Tests
             var linkInfo = File.CreateSymbolicLink(linkPath, nonExistentTargetPath);
 
             Assert.True(linkInfo is FileInfo);
-            Assert.True(linkInfo.Exists);
+            Assert.True(linkInfo.Exists); // For file symlinks, we return the exists info from the actual link, not the target
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             var target = File.ResolveLinkTarget(linkPath);
@@ -61,6 +61,28 @@ namespace System.IO.Tests
         {
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
             Assert.Null(File.ResolveLinkTarget(linkPath));
+        }
+        
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void DetectSymbolicLinkCycle()
+        {
+            // link1 -> link2
+            //   ^        /
+            //    \______/
+
+            string link2Path = Path.Join(TestDirectory, GetTestFileName());
+            string link1Path = Path.Join(TestDirectory, GetTestFileName());
+
+            File.CreateSymbolicLink(path: link1Path, pathToTarget: link2Path);
+            File.CreateSymbolicLink(path: link2Path, pathToTarget: link1Path);
+
+            // Can get targets without following symlinks
+            var link1Target = File.ResolveLinkTarget(linkPath: link1Path);
+            var link2Target = File.ResolveLinkTarget(linkPath: link2Path);
+
+            // Cannot get target when following symlinks
+            Assert.Throws<IndexOutOfRangeException>(() => File.ResolveLinkTarget(linkPath: link1Path, returnFinalTarget: true));
+            Assert.Throws<IndexOutOfRangeException>(() => File.ResolveLinkTarget(linkPath: link2Path, returnFinalTarget: true));
         }
     }
 }

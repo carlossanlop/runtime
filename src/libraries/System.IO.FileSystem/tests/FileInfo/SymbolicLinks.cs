@@ -14,7 +14,7 @@ namespace System.IO.Tests
             File.Create(targetPath).Dispose();
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            FileInfo linkInfo = new FileInfo(linkPath);
+            var linkInfo = new FileInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(targetPath);
 
@@ -34,10 +34,10 @@ namespace System.IO.Tests
             string nonExistentTargetPath = Path.Join(TestDirectory, GetTestFileName());
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            FileInfo linkInfo = new FileInfo(linkPath);
+            var linkInfo = new FileInfo(linkPath);
 
             linkInfo.CreateAsSymbolicLink(nonExistentTargetPath);
-            Assert.True(linkInfo.Exists);
+            Assert.True(linkInfo.Exists); // For file symlinks, we return the exists info from the actual link, not the target
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             var target = linkInfo.ResolveLinkTarget();
@@ -54,7 +54,7 @@ namespace System.IO.Tests
             Directory.CreateDirectory(targetPath);
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            FileInfo linkInfo = new FileInfo(linkPath);
+            var linkInfo = new FileInfo(linkPath);
 
             Assert.Throws<IOException>(() => linkInfo.CreateAsSymbolicLink(targetPath));
         }
@@ -63,7 +63,7 @@ namespace System.IO.Tests
         public void GetTargetInfo_NonExistentLink()
         {
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            FileInfo linkInfo = new FileInfo(linkPath);
+            var linkInfo = new FileInfo(linkPath);
             Assert.Null(linkInfo.ResolveLinkTarget());
         }
 
@@ -79,11 +79,11 @@ namespace System.IO.Tests
             string link1Path = Path.Join(TestDirectory, GetTestFileName());
 
             // link to target
-            FileInfo link2Info = new FileInfo(link2Path);
+            var link2Info = new FileInfo(link2Path);
             link2Info.CreateAsSymbolicLink(targetPath);
 
             // link to link2
-            FileInfo link1Info = new FileInfo(link1Path);
+            var link1Info = new FileInfo(link1Path);
             link1Info.CreateAsSymbolicLink(link2Path);
 
             Assert.True(link1Info.Exists);
@@ -104,6 +104,31 @@ namespace System.IO.Tests
             Assert.True(finalTarget.Exists);
             Assert.Equal(link2Info.LinkTarget, finalTarget.FullName);
             Assert.False(finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint));
+        }
+        
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void DetectSymbolicLinkCycle()
+        {
+            // link1 -> link2
+            //   ^        /
+            //    \______/
+
+            string link2Path = Path.Join(TestDirectory, GetTestFileName());
+            string link1Path = Path.Join(TestDirectory, GetTestFileName());
+
+            var link1Info = new FileInfo(link1Path);
+            link1Info.CreateAsSymbolicLink(link2Path);
+
+            var link2Info = new FileInfo(link2Path);
+            link2Info.CreateAsSymbolicLink(link1Path);
+
+            // Can get targets without following symlinks
+            var link1Target = link1Info.ResolveLinkTarget();
+            var link2Target = link2Info.ResolveLinkTarget();
+
+            // Cannot get target when following symlinks
+            Assert.Throws<IndexOutOfRangeException>(() => link1Info.ResolveLinkTarget(returnFinalTarget: true));
+            Assert.Throws<IndexOutOfRangeException>(() => link2Info.ResolveLinkTarget(returnFinalTarget: true));
         }
     }
 }

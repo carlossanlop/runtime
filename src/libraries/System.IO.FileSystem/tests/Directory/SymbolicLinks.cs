@@ -64,7 +64,7 @@ namespace System.IO.Tests
             var linkInfo = Directory.CreateSymbolicLink(linkPath, nonExistentTargetPath);
 
             Assert.True(linkInfo is DirectoryInfo);
-            Assert.True(linkInfo.Exists);
+            Assert.False(linkInfo.Exists); // For directory symlinks, we return the exists info from the target
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             var target = Directory.ResolveLinkTarget(linkPath);
@@ -89,6 +89,28 @@ namespace System.IO.Tests
         {
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
             Assert.Null(Directory.ResolveLinkTarget(linkPath));
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void DetectSymbolicLinkCycle()
+        {
+            // link1 -> link2
+            //   ^        /
+            //    \______/
+
+            string link2Path = Path.Join(TestDirectory, GetTestFileName());
+            string link1Path = Path.Join(TestDirectory, GetTestFileName());
+
+            Directory.CreateSymbolicLink(path: link1Path, pathToTarget: link2Path);
+            Directory.CreateSymbolicLink(path: link2Path, pathToTarget: link1Path);
+
+            // Can get targets without following symlinks
+            var link1Target = Directory.ResolveLinkTarget(linkPath: link1Path);
+            var link2Target = Directory.ResolveLinkTarget(linkPath: link2Path);
+
+            // Cannot get target when following symlinks
+            Assert.Throws<IndexOutOfRangeException>(() => Directory.ResolveLinkTarget(linkPath: link1Path, returnFinalTarget: true));
+            Assert.Throws<IndexOutOfRangeException>(() => Directory.ResolveLinkTarget(linkPath: link2Path, returnFinalTarget: true));
         }
     }
 }

@@ -569,25 +569,25 @@ namespace System.IO
                 throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(target)));
             }
 
-
-            if (isDirectory)
+            // Fail if a directory or a file (could also be a link) already exists where we want to create the link
+            if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus fileInfo) >= 0)
             {
-                if (DirectoryExists(linkPath))
+                if ((fileInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR)
                 {
                     throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
                 }
-                if (FileExists(target))
-                {
-                    throw new IOException(SR.IO_InconsistentSymlinkType);
-                }
-            }
-            else
-            {
-                if (FileExists(linkPath))
+                else
                 {
                     throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
                 }
-                if (DirectoryExists(target))
+            }
+
+            // Fail if the target exists but it's not consistent with the expected filesystem entry type
+            if (Interop.Sys.LStat(target, out Interop.Sys.FileStatus targetInfo) >= 0)
+            {
+                // Skip this check if the target is a link
+                if ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) != Interop.Sys.FileTypes.S_IFLNK &&
+                    isDirectory != ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR))
                 {
                     throw new IOException(SR.IO_InconsistentSymlinkType);
                 }
@@ -614,49 +614,56 @@ namespace System.IO
         {
             Debug.Assert(!PathInternal.IsPartiallyQualified(linkPath));
 
-            string? current = GetLinkTarget(linkPath);
-
-            // linkPath either does not exist or is not a symbolic link
-            if (current == null)
+            string? targetPath = GetLinkTarget(linkPath);
+            if (targetPath == null)
             {
+                // linkPath either does not exist or is not a link
                 return null;
             }
 
-            // 40 is the limit in symbolic link chain resolution
-            int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
-            int visitCount = 0;
-            string? next = null;
-            string prefix = Path.GetDirectoryName(linkPath)!;
+            string? prefix;
+            if (PathInternal.IsPartiallyQualified(targetPath))
+            {
+                prefix = Path.GetDirectoryName(linkPath);
+                targetPath = Path.Join(prefix, targetPath);
+            }
 
+            int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
+            int visitCount = 1;
             while (visitCount < maxVisits)
             {
-                // Gets the path to the target, independently if it exists or not
-                next = GetLinkTarget(Path.Join(prefix, current));
-                // Null means currentPath does not exist or is not a link
-                if (next == null)
+                string? nextPath = GetLinkTarget(targetPath);
+
+                if (nextPath == null)
                 {
+                    // targetPath does not exist or is not a link
                     break;
                 }
-                // The new prefix is additive, even if it contains relative paths
-                prefix = Path.Join(prefix, Path.GetDirectoryName(next));
 
-                // Non-null means currentPath represents an existing link
-                current = next;
+                if (PathInternal.IsPartiallyQualified(nextPath))
+                {
+                    prefix = Path.GetDirectoryName(targetPath);
+                    targetPath = Path.Join(prefix, nextPath);
+                }
+                else
+                {
+                    targetPath = nextPath;
+                }
 
                 visitCount++;
             }
 
-            // If we surpassed the visit limit, it means we couldn't reach the final target
-            if (visitCount >= maxVisits)
+            if (visitCount >= MaxFollowedLinks)
             {
+                // We went over the limit and couldn't reach the final target
                 throw new IndexOutOfRangeException(SR.Format(SR.IndexOutOfRange_SymbolicLinkLevels, linkPath));
             }
 
-            Debug.Assert(current != null);
+            Debug.Assert(targetPath != null);
 
             return isDirectory ?
-                    new DirectoryInfo(Path.Join(prefix, current)) :
-                    new FileInfo(Path.Join(prefix, current));
+                    new DirectoryInfo(targetPath) :
+                    new FileInfo(targetPath);
         }
     }
 }
