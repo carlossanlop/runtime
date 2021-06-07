@@ -143,7 +143,7 @@ namespace System.IO
         /// An I/O error occurred.</exception>
         public void CreateAsSymbolicLink(string pathToTarget)
         {
-            FileSystem.CreateSymbolicLink(FullPath, pathToTarget, this is DirectoryInfo);
+            FileSystem.CreateSymbolicLink(OriginalPath, pathToTarget, this is DirectoryInfo);
             Invalidate();
         }
 

@@ -7,6 +7,49 @@ namespace System.IO.Tests
 {
     public class FileInfo_SymbolicLinks : BaseSymbolicLinks
     {
+        [Fact]
+        public void LinkDoesNotExist_GetLinkTarget()
+        {
+            var info = new FileInfo(GetRandomFilePath());
+            Assert.Null(info.LinkTarget);
+            Assert.Null(info.ResolveLinkTarget());
+            Assert.Null(info.ResolveLinkTarget(returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void LinkExists_TargetDoesNotExist_GetLinkTarget()
+        {
+            string filePath = GetRandomFilePath();
+            File.Create(filePath).Dispose();
+            var info = new FileInfo(filePath);
+            Assert.Null(info.LinkTarget);
+            Assert.Null(info.ResolveLinkTarget());
+            Assert.Null(info.ResolveLinkTarget(returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_RelativeLinkPath()
+        {
+            var info = new FileInfo("relativeLinkPath");
+            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink("pathToTarget"));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullPathToTarget()
+        {
+            var info = new FileInfo(GetRandomFilePath());
+            Assert.Throws<ArgumentNullException>(() => info.CreateAsSymbolicLink(pathToTarget: null));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidPathToTarget(string pathToTarget)
+        {
+            var info = new FileInfo(GetRandomFilePath());
+            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink(pathToTarget));
+        }
+
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_Absolute()
         {
