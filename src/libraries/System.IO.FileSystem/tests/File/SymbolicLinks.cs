@@ -10,10 +10,10 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink()
         {
-            string targetPath = Path.Join(TestDirectory, GetTestFileName());
+            string targetPath = GetRandomFilePath();
             File.Create(targetPath).Dispose();
 
-            string linkPath = Path.Join(TestDirectory, GetTestFileName());
+            string linkPath = GetRandomLinkPath();
             var linkInfo = File.CreateSymbolicLink(linkPath, targetPath);
 
             Assert.True(linkInfo is FileInfo);

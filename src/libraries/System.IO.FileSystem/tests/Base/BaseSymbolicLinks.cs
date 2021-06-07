@@ -14,5 +14,13 @@ namespace System.IO.Tests
             Assert.True(MountHelper.CreateSymbolicLink(pathToLink, pathToLink, isDirectory: true)); // Create a symlink cycle
             return testDirectory;
         }
+
+        protected string GetRandomFileName() => GetTestFileName() + ".txt";
+        protected string GetRandomLinkName() => GetTestFileName() + ".link";
+        protected string GetRandomDirName()  => GetTestFileName() + "_dir";
+
+        protected string GetRandomFilePath() => Path.Join(TestDirectory, GetRandomFileName());
+        protected string GetRandomLinkPath() => Path.Join(TestDirectory, GetRandomLinkName());
+        protected string GetRandomDirPath()  => Path.Join(TestDirectory, GetRandomDirName());
     }
 }

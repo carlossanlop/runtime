@@ -669,6 +669,9 @@
   <data name="Arg_PathEmpty" xml:space="preserve">
     <value>The path is empty.</value>
   </data>
+  <data name="Arg_PathEmpty_Name" xml:space="preserve">
+    <value>The path '{0}' is empty.</value>
+  </data>
   <data name="Arg_PlatformNotSupported" xml:space="preserve">
     <value>Operation is not supported on this platform.</value>
   </data>

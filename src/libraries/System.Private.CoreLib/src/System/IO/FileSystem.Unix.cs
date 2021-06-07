@@ -559,6 +559,10 @@ namespace System.IO
             {
                 throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(linkPath)));
             }
+            else if (PathInternal.IsPartiallyQualified(linkPath))
+            {
+                throw new ArgumentException(SR.Format(SR.Argument_AbsolutePathRequired, linkPath));
+            }
 
             if (target == null)
             {
@@ -566,10 +570,11 @@ namespace System.IO
             }
             else if (target.Length == 0)
             {
-                throw new ArgumentException(SR.Format(SR.net_emptystringcall, nameof(target)));
+                throw new ArgumentException(SR.Format(SR.Arg_PathEmpty_Name, nameof(target)));
             }
 
             // Fail if a directory or a file (could also be a link) already exists where we want to create the link
+            // This is necessary because Interop.Sys.SymLink silently fails when that's the case
             if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus fileInfo) >= 0)
             {
                 if ((fileInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR)
@@ -582,18 +587,18 @@ namespace System.IO
                 }
             }
 
-            // Fail if the target exists but it's not consistent with the expected filesystem entry type
+            // Fail if the target exists but is not consistent with the expected filesystem entry type
             if (Interop.Sys.LStat(target, out Interop.Sys.FileStatus targetInfo) >= 0)
             {
-                // Skip this check if the target is a link
+                // Skip this check if the target is a link:
+                // - It could be part of a chain of links, or
+                // - The link could be broken (which could be intended by the user)
                 if ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) != Interop.Sys.FileTypes.S_IFLNK &&
                     isDirectory != ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR))
                 {
                     throw new IOException(SR.IO_InconsistentSymlinkType);
                 }
             }
-
-            Debug.Assert(!PathInternal.IsPartiallyQualified(linkPath));
 
             if (Interop.Sys.SymLink(target, linkPath) < 0)
             {
