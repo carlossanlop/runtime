@@ -45,6 +45,7 @@ namespace System.IO.Tests
 
             Assert.True(linkInfo.Exists);
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.False(linkInfo.Attributes.HasFlag(FileAttributes.Directory));
 
             var targetInfo = linkInfo.ResolveLinkTarget();
 
@@ -67,6 +68,7 @@ namespace System.IO.Tests
             linkInfo.CreateAsSymbolicLink(nonExistentTargetPath);
             Assert.True(linkInfo.Exists); // For file symlinks, we return the exists info from the actual link, not the target
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.False(linkInfo.Attributes.HasFlag(FileAttributes.Directory));
 
             var target = linkInfo.ResolveLinkTarget();
 
@@ -138,7 +140,6 @@ namespace System.IO.Tests
             string link2FileName = Path.GetFileName(link2Path);
             string fileName = Path.GetFileName(filePath);
             string leafDir = Path.GetFileName(TestDirectory);
-            //Attach();
             GetTargetInfo_ReturnFinalTarget(
                 link1Path: link1Path,
                 expectedLink1Target: Path.Join(TestDirectory, "..", leafDir, link2FileName),
@@ -163,6 +164,7 @@ namespace System.IO.Tests
 
             Assert.True(link1Info.Exists);
             Assert.True(link1Info.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.False(link1Info.Attributes.HasFlag(FileAttributes.Directory));
 
             Assert.Equal(link1Info.LinkTarget, expectedLink1Target);
             Assert.Equal(link2Info.LinkTarget, expectedLink2Target);
@@ -173,6 +175,7 @@ namespace System.IO.Tests
             Assert.True(link1Target is FileInfo);
             Assert.True(link1Target.Exists);
             Assert.True(link1Target.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.False(link1Target.Attributes.HasFlag(FileAttributes.Directory));
             Assert.Equal(link1Target.FullName, link2Path);
 
             // follow symlinks
@@ -180,10 +183,6 @@ namespace System.IO.Tests
 
             Assert.True(finalTarget is FileInfo);
             Assert.True(finalTarget.Exists);
-            if (finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                Console.WriteLine($"Final target path: {finalTarget.FullName},\nexpected file path: {filePath}\nexpected2: {expectedLink2Target}\nreparse: {finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint)}");
-            }
             Assert.False(finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint));
             Assert.Equal(finalTarget.FullName, filePath);
         }
