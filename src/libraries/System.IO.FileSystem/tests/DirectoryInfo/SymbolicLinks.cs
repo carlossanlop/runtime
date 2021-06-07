@@ -74,6 +74,49 @@ namespace System.IO.Tests
             }
         }
 
+        [Fact]
+        public void LinkDoesNotExist_GetLinkTarget()
+        {
+            var info = new DirectoryInfo(GetRandomFilePath());
+            Assert.Null(info.LinkTarget);
+            Assert.Null(info.ResolveLinkTarget());
+            Assert.Null(info.ResolveLinkTarget(returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void LinkExists_TargetDoesNotExist_GetLinkTarget()
+        {
+            string dirPath = GetRandomFilePath();
+            Directory.CreateDirectory(dirPath);
+            var info = new DirectoryInfo(dirPath);
+            Assert.Null(info.LinkTarget);
+            Assert.Null(info.ResolveLinkTarget());
+            Assert.Null(info.ResolveLinkTarget(returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_RelativeLinkPath()
+        {
+            var info = new DirectoryInfo("relativeLinkPath");
+            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink("pathToTarget"));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullPathToTarget()
+        {
+            var info = new DirectoryInfo(GetRandomFilePath());
+            Assert.Throws<ArgumentNullException>(() => info.CreateAsSymbolicLink(pathToTarget: null));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidPathToTarget(string pathToTarget)
+        {
+            var info = new DirectoryInfo(GetRandomFilePath());
+            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink(pathToTarget));
+        }
+
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_Absolute()
         {
