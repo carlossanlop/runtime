@@ -35,29 +35,110 @@ namespace System.IO.Tests
             Assert.Single(Directory.EnumerateFileSystemEntries(testDirectory.FullName));
         }
 
-        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
-        public void CreateSymbolicLink()
+        [Fact]
+        public void LinkDoesNotExist_GetLinkTarget()
         {
-            string targetPath = Path.Join(TestDirectory, GetTestFileName());
-            Directory.CreateDirectory(targetPath);
+            string dirPath = GetRandomFilePath();
+            Assert.Null(Directory.ResolveLinkTarget(dirPath));
+            Assert.Null(Directory.ResolveLinkTarget(dirPath, returnFinalTarget: true));
+        }
 
-            string linkPath = Path.Join(TestDirectory, GetTestFileName());
-            var linkInfo = Directory.CreateSymbolicLink(linkPath, targetPath);
+        [Fact]
+        public void NotALink_GetLinkTarget()
+        {
+            string dirPath = GetRandomFilePath();
+            Directory.CreateDirectory(dirPath);
+            Assert.Null(Directory.ResolveLinkTarget(dirPath));
+            Assert.Null(Directory.ResolveLinkTarget(dirPath, returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullLinkPath()
+        {
+            Assert.Throws<ArgumentNullException>(() => Directory.CreateSymbolicLink(path: null, pathToTarget: GetRandomFileName()));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidLinkPath(string linkPath)
+        {
+            Assert.Throws<ArgumentException>(() => Directory.CreateSymbolicLink(linkPath, pathToTarget: GetRandomFileName()));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_RelativeLinkPath()
+        {
+            Assert.Throws<ArgumentException>(() => Directory.CreateSymbolicLink(path: GetRandomFileName(), pathToTarget: GetRandomFileName()));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullPathToTarget()
+        {
+            Assert.Throws<ArgumentNullException>(() => Directory.CreateSymbolicLink(path: GetRandomFilePath(), pathToTarget: null));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidPathToTarget(string pathToTarget)
+        {
+            Assert.Throws<ArgumentException>(() => Directory.CreateSymbolicLink(GetRandomFilePath(), pathToTarget));
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void CreateSymbolicLink_Absolute()
+        {
+            // /path/to/fileLink -> /path/to/targetFile
+
+            string linkPath = GetRandomLinkPath();
+            string dirPath = GetRandomFilePath();
+            CreateSymbolicLink(
+                linkPath: linkPath,
+                expectedLinkTarget: dirPath,
+                dirPath: dirPath);
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void CreateSymbolicLink_Relative()
+        {
+            // /path/to/fileLink -> targetFile
+
+            string linkPath = GetRandomLinkPath();
+            string dirPath = GetRandomFilePath();
+            string dirName = Path.GetFileName(dirPath);
+            CreateSymbolicLink(
+                linkPath: linkPath,
+                expectedLinkTarget: dirName,
+                dirPath: dirPath);
+        }
+
+        private void CreateSymbolicLink(string linkPath, string expectedLinkTarget, string dirPath)
+        {
+            // linkPath -> expectedLinkTarget (created in dirPath)
+
+            Directory.CreateDirectory(dirPath);
+
+            var linkInfo = Directory.CreateSymbolicLink(linkPath, expectedLinkTarget);
 
             Assert.True(linkInfo is DirectoryInfo);
             Assert.True(linkInfo.Exists);
             Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.True(linkInfo.Attributes.HasFlag(FileAttributes.Directory));
 
-            var target = Directory.ResolveLinkTarget(linkPath);
+            var targetInfo = Directory.ResolveLinkTarget(linkPath);
 
-            Assert.True(target is DirectoryInfo);
-            Assert.True(target.Exists);
-            Assert.Equal(targetPath, target.FullName);
+            Assert.True(targetInfo is DirectoryInfo);
+            Assert.True(targetInfo.Exists);
+            Assert.Equal(linkInfo.LinkTarget, expectedLinkTarget);
+            Assert.True(Path.IsPathFullyQualified(targetInfo.FullName));
         }
 
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_NonExistentTarget()
         {
+            // dirLink -> ?
+
             string nonExistentTargetPath = Path.Join(TestDirectory, GetTestFileName());
 
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
@@ -77,6 +158,8 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink_WrongTargetType()
         {
+            // dirLink => file
+
             string targetPath = Path.Join(TestDirectory, GetTestFileName());
             File.Create(targetPath).Dispose();
 
@@ -87,8 +170,95 @@ namespace System.IO.Tests
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void GetTargetInfo_NonExistentLink()
         {
+            // ? -> ?
+
             string linkPath = Path.Join(TestDirectory, GetTestFileName());
             Assert.Null(Directory.ResolveLinkTarget(linkPath));
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void GetTargetInfo_ReturnFinalTarget_Absolute()
+        {
+            string link1Path = GetRandomLinkPath();
+            string link2Path = GetRandomLinkPath();
+            string dirPath = GetRandomFilePath();
+            GetTargetInfo_ReturnFinalTarget(
+                link1Path: link1Path,
+                expectedLink1Target: link2Path,
+                link2Path: link2Path,
+                expectedLink2Target: dirPath,
+                dirPath: dirPath);
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void GetTargetInfo_ReturnFinalTarget_Relative()
+        {
+            string link1Path = GetRandomLinkPath();
+            string link2Path = GetRandomLinkPath();
+            string dirPath = GetRandomFilePath();
+            string link2FileName = Path.GetFileName(link2Path);
+            string dirName = Path.GetFileName(dirPath);
+            GetTargetInfo_ReturnFinalTarget(
+                link1Path: link1Path,
+                expectedLink1Target: link2FileName,
+                link2Path: link2Path,
+                expectedLink2Target: dirName,
+                dirPath: dirPath);
+        }
+
+        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        public void GetTargetInfo_ReturnFinalTarget_Relative_WithRedundantSegments()
+        {
+            string link1Path = GetRandomLinkPath();
+            string link2Path = GetRandomLinkPath();
+            string dirPath = GetRandomFilePath();
+            string link2FileName = Path.GetFileName(link2Path);
+            string dirName = Path.GetFileName(dirPath);
+            string leafDir = Path.GetFileName(TestDirectory);
+            GetTargetInfo_ReturnFinalTarget(
+                link1Path: link1Path,
+                expectedLink1Target: Path.Join(TestDirectory, "..", leafDir, link2FileName),
+                link2Path: link2Path,
+                expectedLink2Target: Path.Join(TestDirectory, ".", dirName),
+                dirPath: dirPath);
+        }
+
+        private void GetTargetInfo_ReturnFinalTarget(string link1Path, string expectedLink1Target, string link2Path, string expectedLink2Target, string dirPath)
+        {
+            // link1Path -> expectedLink1Target (created in link2Path) -> expectedLink2Target (created in dirPath)
+
+            Directory.CreateDirectory(dirPath);
+
+            // link to target
+            var link2Info = Directory.CreateSymbolicLink(link2Path, expectedLink2Target);
+
+            // link to link2
+            var link1Info = Directory.CreateSymbolicLink(link1Path, expectedLink1Target);
+
+            Assert.True(link1Info.Exists);
+            Assert.True(link1Info.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.True(link1Info.Attributes.HasFlag(FileAttributes.Directory));
+
+            Assert.Equal(link1Info.LinkTarget, expectedLink1Target);
+            Assert.Equal(link2Info.LinkTarget, expectedLink2Target);
+
+            // do not follow symlinks
+            var link1Target = Directory.ResolveLinkTarget(link1Path);
+
+            Assert.True(link1Target is DirectoryInfo);
+            Assert.True(link1Target.Exists);
+            Assert.True(link1Target.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.True(link1Target.Attributes.HasFlag(FileAttributes.Directory));
+            Assert.Equal(link1Target.FullName, link2Path);
+
+            // follow symlinks
+            var finalTarget = Directory.ResolveLinkTarget(link1Path, returnFinalTarget: true);
+
+            Assert.True(finalTarget is DirectoryInfo);
+            Assert.True(finalTarget.Exists);
+            Assert.False(finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.True(finalTarget.Attributes.HasFlag(FileAttributes.Directory));
+            Assert.Equal(finalTarget.FullName, dirPath);
         }
 
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]

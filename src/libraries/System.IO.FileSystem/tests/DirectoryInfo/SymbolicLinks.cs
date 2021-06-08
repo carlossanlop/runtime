@@ -294,6 +294,7 @@ namespace System.IO.Tests
             Assert.True(finalTarget is DirectoryInfo);
             Assert.True(finalTarget.Exists);
             Assert.False(finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.True(link1Target.Attributes.HasFlag(FileAttributes.Directory));
             Assert.Equal(finalTarget.FullName, dirPath);
         }
 

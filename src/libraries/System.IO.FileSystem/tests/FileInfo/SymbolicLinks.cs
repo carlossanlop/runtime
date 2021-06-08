@@ -227,9 +227,10 @@ namespace System.IO.Tests
             Assert.True(finalTarget is FileInfo);
             Assert.True(finalTarget.Exists);
             Assert.False(finalTarget.Attributes.HasFlag(FileAttributes.ReparsePoint));
+            Assert.False(link1Target.Attributes.HasFlag(FileAttributes.Directory));
             Assert.Equal(finalTarget.FullName, filePath);
         }
-        
+
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void DetectSymbolicLinkCycle()
         {

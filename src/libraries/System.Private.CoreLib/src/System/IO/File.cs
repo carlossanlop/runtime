@@ -1056,9 +1056,18 @@ namespace System.IO
         /// <summary>
         /// Creates a file symbolic link identified by <paramref name="path"/> that points to <paramref name="pathToTarget"/>.
         /// </summary>
-        /// <param name="path">The location of the file symbolic link.</param>
-        /// <param name="pathToTarget">The target of the file symbolic link.</param>
+        /// <param name="path">The absolute path where the symbolic link should be created.</param>
+        /// <param name="pathToTarget">The target of the file symbolic link..</param>
         /// <returns>A <see cref="FileInfo"/> instance that wraps the newly created file symbolic link.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="path"/> or <paramref name="pathToTarget"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="path"/> or <paramref name="pathToTarget"/> is empty.
+        /// -or-
+        /// <paramref name="path"/> is not an absolute path.
+        /// -or-
+        /// <paramref name="path"/> or <paramref name="pathToTarget"/> contains invalid path characters.</exception>
+        /// <exception cref="IOException">A file or directory already exists in the location of <paramref name="path"/>.
+        /// -or-
+        /// An I/O error occurred.</exception>
         public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
         {
             FileSystem.CreateSymbolicLink(path, pathToTarget, isDirectory: false);
