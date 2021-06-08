@@ -634,6 +634,7 @@ namespace System.IO
                 return null;
             }
 
+            // Ensure all paths are fully qualified, by adding a prefix that is relative to the previous path
             string? prefix;
             if (PathInternal.IsPartiallyQualified(targetPath))
             {
