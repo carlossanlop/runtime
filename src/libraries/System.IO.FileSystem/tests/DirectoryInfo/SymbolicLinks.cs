@@ -84,7 +84,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public void LinkExists_TargetDoesNotExist_GetLinkTarget()
+        public void NotALink_GetLinkTarget()
         {
             string dirPath = GetRandomFilePath();
             Directory.CreateDirectory(dirPath);
@@ -97,8 +97,8 @@ namespace System.IO.Tests
         [Fact]
         public void CreateSymbolicLink_RelativeLinkPath()
         {
-            var info = new DirectoryInfo("relativeLinkPath");
-            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink("pathToTarget"));
+            var info = new DirectoryInfo(GetRandomFileName());
+            Assert.Throws<ArgumentException>(() => info.CreateAsSymbolicLink(pathToTarget: GetRandomFileName()));
         }
 
         [Fact]

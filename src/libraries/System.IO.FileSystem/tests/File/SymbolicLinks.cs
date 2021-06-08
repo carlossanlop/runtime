@@ -1,12 +1,64 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using Xunit;
 
 namespace System.IO.Tests
 {
     public class File_SymbolicLinks : BaseSymbolicLinks
     {
+        [Fact]
+        public void LinkDoesNotExist_GetLinkTarget()
+        {
+            string filePath = GetRandomFilePath();
+            Assert.Null(File.ResolveLinkTarget(filePath));
+            Assert.Null(File.ResolveLinkTarget(filePath, returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void NotALink_GetLinkTarget()
+        {
+            string filePath = GetRandomFilePath();
+            File.Create(filePath).Dispose();
+            Assert.Null(File.ResolveLinkTarget(filePath));
+            Assert.Null(File.ResolveLinkTarget(filePath, returnFinalTarget: true));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullLinkPath()
+        {
+            Assert.Throws<ArgumentNullException>(() => File.CreateSymbolicLink(path: null, pathToTarget: GetRandomFileName()));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidLinkPath(string linkPath)
+        {
+            Assert.Throws<ArgumentException>(() => File.CreateSymbolicLink(linkPath, pathToTarget: GetRandomFileName()));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_RelativeLinkPath()
+        {
+            Assert.Throws<ArgumentException>(() => File.CreateSymbolicLink(path: GetRandomFileName(), pathToTarget: GetRandomFileName()));
+        }
+
+        [Fact]
+        public void CreateSymbolicLink_NullPathToTarget()
+        {
+            Assert.Throws<ArgumentNullException>(() => File.CreateSymbolicLink(path: GetRandomFilePath(), pathToTarget: null));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\0")]
+        public void CreateSymbolicLink_InvalidPathToTarget(string pathToTarget)
+        {
+            Assert.Throws<ArgumentException>(() => File.CreateSymbolicLink(GetRandomFilePath(), pathToTarget));
+        }
+
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
         public void CreateSymbolicLink()
         {
