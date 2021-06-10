@@ -136,8 +136,7 @@ namespace System.IO.Tests
             CreateFileSystemEntry(path); // entry exists as a normal file, not as a link
 
             var target = ResolveLinkTarget(path, returnFinalTarget);
-            Assert.NotNull(target);
-            Assert.False(target.Exists);
+            Assert.Null(target);
         }
 
         [ConditionalFact(nameof(CanCreateSymbolicLinks))]
