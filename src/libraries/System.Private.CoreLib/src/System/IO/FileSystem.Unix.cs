@@ -537,17 +537,10 @@ namespace System.IO
 
         /// <summary>Gets the path of the target of the specified link.</summary>
         /// <param name="linkPath">A path to a link file.</param>
-        /// <returns>If the specified <paramref name="linkPath"/> represents a link file and it exists, this method returns the link's target path.
-        /// If the specified <paramref name="linkPath"/> is not a link, or the file does not exist, this method returns <see langword="null"/>.</returns>
-        internal static string? GetLinkTarget(string linkPath)
-        {
-            if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus status) == 0 &&
-                    (status.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK)
-            {
-                return Interop.Sys.ReadLink(linkPath);
-            }
-            return null;
-        }
+        /// <returns>If linkPath represents a link file and it exists, returns the link's target path.
+        /// If linkPath is not a link or the target does not exist, returns null.</returns>
+        internal static string? GetLinkTarget(string linkPath) =>
+            LinkExists(linkPath, out _) ? Interop.Sys.ReadLink(linkPath) : null;
 
         internal static void CreateSymbolicLink(string linkPath, string target, bool isDirectory)
         {
@@ -563,10 +556,6 @@ namespace System.IO
             {
                 throw new ArgumentException(SR.Argument_InvalidPathChars, nameof(linkPath));
             }
-            else if (PathInternal.IsPartiallyQualified(linkPath))
-            {
-                throw new ArgumentException(SR.Argument_AbsolutePathRequired, linkPath);
-            }
 
             if (target == null)
             {
@@ -580,20 +569,21 @@ namespace System.IO
             {
                 throw new ArgumentException(SR.Argument_InvalidPathChars, nameof(target));
             }
+            // Erase if the p/invoke throws when the file exists
 
             // Fail if a directory or a file (could also be a link) already exists where we want to create the link
             // This is necessary because Interop.Sys.SymLink silently fails when that's the case
-            if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus fileInfo) >= 0)
-            {
-                if ((fileInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR)
-                {
-                    throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
-                }
-                else
-                {
-                    throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
-                }
-            }
+            // if (Interop.Sys.LStat(linkPath, out Interop.Sys.FileStatus fileInfo) >= 0)
+            // {
+            //     if ((fileInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR)
+            //     {
+            //         throw new IOException(SR.Format(SR.IO_DirectoryExists_Name, linkPath));
+            //     }
+            //     else
+            //     {
+            //         throw new IOException(SR.Format(SR.IO_FileExists_Name, linkPath));
+            //     }
+            // }
 
             // Fail if the target exists but is not consistent with the expected filesystem entry type
             if (Interop.Sys.LStat(target, out Interop.Sys.FileStatus targetInfo) >= 0)
@@ -604,7 +594,7 @@ namespace System.IO
                 if ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) != Interop.Sys.FileTypes.S_IFLNK &&
                     isDirectory != ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR))
                 {
-                    throw new IOException(SR.IO_InconsistentSymlinkType);
+                    throw new IOException(SR.IO_InconsistentLinkType);
                 }
             }
 
@@ -625,16 +615,33 @@ namespace System.IO
         /// If the specified <paramref name="linkPath"/> is not a link file or it does not exist, returns <see langword="null"/>.</returns>
         internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
-            Debug.Assert(!PathInternal.IsPartiallyQualified(linkPath));
+            if (linkPath == null)
+            {
+                throw new ArgumentNullException(nameof(linkPath));
+            }
+            else if (linkPath.Length == 0)
+            {
+                throw new ArgumentException(SR.Arg_PathEmpty_Name, nameof(linkPath));
+            }
+            else if (linkPath.Contains('\0'))
+            {
+                throw new ArgumentException(SR.Argument_InvalidPathChars, nameof(linkPath));
+            }
+
+            // throws if the current link file does not exist
+            if (Interop.Sys.LStat(linkPath, out _) < 0)
+            {
+                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
+            }
 
             string? targetPath = GetLinkTarget(linkPath);
             if (targetPath == null)
             {
-                // linkPath either does not exist or is not a link
+                // linkPath exists but is not a link
                 return null;
             }
 
-            // Ensure all paths are fully qualified, by adding a prefix that is relative to the previous path
+            //Ensure all paths are fully qualified, by adding a prefix that is relative to the previous path
             string? prefix;
             if (PathInternal.IsPartiallyQualified(targetPath))
             {
