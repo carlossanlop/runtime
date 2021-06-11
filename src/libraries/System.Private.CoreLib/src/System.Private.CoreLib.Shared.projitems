@@ -417,6 +417,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileShare.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileStreamOptions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileSystem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileSystemInfo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\HandleInheritability.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\InvalidDataException.cs" />
@@ -1989,6 +1990,9 @@
     </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.Stat.Span.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.Stat.Span.cs</Link>
+    </Compile>
+    <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.SymLink.cs">
+      <Link>Common\Interop\Unix\System.Native\Interop.SymLink.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.SysConf.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.SysConf.cs</Link>

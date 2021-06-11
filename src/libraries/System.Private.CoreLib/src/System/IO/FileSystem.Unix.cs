@@ -11,6 +11,10 @@ namespace System.IO
     {
         internal const int DefaultBufferSize = 4096;
 
+        // On Linux, the maximum number of symbolic links that are followed while resolving a pathname is 40.
+        // See: https://man7.org/linux/man-pages/man7/path_resolution.7.html
+        private const int MaxFollowedLinks = 40;
+
         public static void CopyFile(string sourceFullPath, string destFullPath, bool overwrite)
         {
             // If the destination path points to a directory, we throw to match Windows behaviour
@@ -529,6 +533,108 @@ namespace System.IO
         public static string[] GetLogicalDrives()
         {
             return DriveInfoInternal.GetLogicalDrives();
+        }
+
+        /// <summary>Gets the path of the target of the specified link.</summary>
+        /// <param name="linkPath">A path to a link file.</param>
+        /// <returns>If linkPath represents a link file and it exists, returns the link's target path.
+        /// If linkPath is not a link or the target does not exist, returns null.</returns>
+        internal static string? GetLinkTarget(string linkPath) => Interop.Sys.ReadLink(linkPath);
+
+        internal static void CreateSymbolicLink(string linkPath, string target, bool isDirectory)
+        {
+            VerifyValidPath(linkPath, nameof(linkPath));
+            VerifyValidPath(target, nameof(target));
+
+            // Fail if the target exists but is not consistent with the expected filesystem entry type
+            if (Interop.Sys.LStat(target, out Interop.Sys.FileStatus targetInfo) == 0)
+            {
+                // Skip this check if the target is a link:
+                // - It could be part of a chain of links, or
+                // - The link could be broken (which could be intended by the user)
+                if ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) != Interop.Sys.FileTypes.S_IFLNK &&
+                    isDirectory != ((targetInfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFDIR))
+                {
+                    throw new IOException(SR.IO_InconsistentLinkType);
+                }
+            }
+
+            if (Interop.Sys.SymLink(target, linkPath) < 0)
+            {
+                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
+            }
+        }
+
+        /// <summary>Gets the target of the specified link path.</summary>
+        /// <param name="linkPath">A path to a link file.</param>
+        /// <param name="returnFinalTarget"><see langword="true"/> to return the final target file or directory in a chain of links; <see langword="false"/> to
+        /// return the immediate next target.</param>
+        /// <param name="isDirectory"><see langword="true"/> if the link points to a directory; <see langword="false"/> if the link points to a file.</param>
+        /// <returns>If the specified <paramref name="linkPath"/> represents a link file and it exists, returns a <see cref="FileInfo"/> if
+        /// <paramref name="isDirectory"/> is <see langword="false"/>, or a <see cref="DirectoryInfo"/> if <paramref name="isDirectory"/> is <see langword="true"/>,
+        /// independently if the target file/directory exists or not.
+        /// If the specified <paramref name="linkPath"/> is not a link file or it does not exist, returns <see langword="null"/>.</returns>
+        internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
+        {
+            VerifyValidPath(linkPath, nameof(linkPath));
+
+            // throws if the current link file does not exist
+            if (Interop.Sys.LStat(linkPath, out _) < 0)
+            {
+                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
+            }
+
+            string? targetPath = GetLinkTarget(linkPath);
+            if (targetPath == null)
+            {
+                // linkPath exists but is not a link
+                return null;
+            }
+
+            //Ensure all paths are fully qualified, by adding a prefix that is relative to the previous path
+            string? prefix;
+            if (PathInternal.IsPartiallyQualified(targetPath))
+            {
+                prefix = Path.GetDirectoryName(linkPath);
+                targetPath = Path.Join(prefix, targetPath);
+            }
+
+            int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
+            int visitCount = 1;
+            while (visitCount < maxVisits)
+            {
+                string? nextPath = GetLinkTarget(targetPath);
+
+                if (nextPath == null)
+                {
+                    // targetPath does not exist or is not a link
+                    break;
+                }
+
+                if (PathInternal.IsPartiallyQualified(nextPath))
+                {
+                    prefix = Path.GetDirectoryName(targetPath);
+                    targetPath = Path.Join(prefix, nextPath);
+                }
+                else
+                {
+                    targetPath = nextPath;
+                }
+
+                visitCount++;
+            }
+
+            if (visitCount >= MaxFollowedLinks)
+            {
+                // We went over the limit and couldn't reach the final target
+                throw new IndexOutOfRangeException(SR.Format(SR.IndexOutOfRange_SymbolicLinkLevels, linkPath));
+            }
+
+            Debug.Assert(targetPath != null);
+
+            return isDirectory ?
+                    new DirectoryInfo(targetPath) :
+                    new FileInfo(targetPath);
         }
     }
 }

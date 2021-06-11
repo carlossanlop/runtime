@@ -19,9 +19,17 @@ namespace System.IO
 
         internal string _name = null!; // Fields initiated in derived classes
 
+        private string? _linkTarget;
+
         protected FileSystemInfo(SerializationInfo info, StreamingContext context)
         {
             throw new PlatformNotSupportedException();
+        }
+
+        internal void Invalidate()
+        {
+            _linkTarget = null;
+            InvalidateCore();
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -106,6 +114,51 @@ namespace System.IO
             get => LastWriteTimeCore.UtcDateTime;
             set => LastWriteTimeCore = File.GetUtcDateTimeOffset(value);
         }
+
+        /// <summary>
+        /// If this <see cref="FileSystemInfo"/> instance represents a link, returns the link target's path.
+        /// If a link does not exist in <see cref="FullName"/>, or this instance does not represent a link, returns <see langword="null"/>.
+        /// </summary>
+        public string? LinkTarget
+        {
+            get
+            {
+                if (_linkTarget == null)
+                {
+                    _linkTarget = FileSystem.GetLinkTarget(FullPath);
+                }
+
+                return _linkTarget;
+            }
+        }
+
+        /// <summary>
+        /// Creates a symbolic link located in <see cref="FullName"/> that points to the specified <paramref name="pathToTarget"/>.
+        /// </summary>
+        /// <param name="pathToTarget">The path of the symbolic link target.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="pathToTarget"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="pathToTarget"/> is empty.
+        /// -or-
+        /// This instance was not created passing an absolute path.
+        /// -or-
+        /// <paramref name="pathToTarget"/> contains invalid path characters.</exception>
+        /// <exception cref="IOException">A file or directory already exists in the location of <see cref="FullName"/>.
+        /// -or-
+        /// An I/O error occurred.</exception>
+        public void CreateAsSymbolicLink(string pathToTarget)
+        {
+            FileSystem.CreateSymbolicLink(OriginalPath, pathToTarget, this is DirectoryInfo);
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Gets the target of the specified link.
+        /// </summary>
+        /// <param name="returnFinalTarget"><see langword="true"/> to follow links to the final target; <see langword="false"/> to return the immediate next link.</param>
+        /// <returns>A <see cref="FileSystemInfo"/> instance if the link exists, independently if the target exists or not; <see langword="null"/> if a link does not exist
+        /// in <see cref="FullName"/>, or this instance does not represent a link.</returns>
+        public FileSystemInfo? ResolveLinkTarget(bool returnFinalTarget = false) =>
+            FileSystem.ResolveLinkTarget(FullPath, returnFinalTarget, this is DirectoryInfo);
 
         /// <summary>
         /// Returns the original path. Use FullName or Name properties for the full path or file/directory name.
