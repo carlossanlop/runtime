@@ -7,16 +7,16 @@ namespace System.IO.Tests
 {
     public class FileInfo_SymbolicLinks : BaseSymbolicLinks_FileSystemInfo
     {
-        protected override FileSystemInfo CreateFileSystemInfo(string path) =>
+        protected override FileSystemInfo GetFileSystemInfo(string path) =>
             new FileInfo(path);
 
-        protected override void CreateFileSystemEntry(string path) =>
+        protected override void CreateFileOrDirectory(string path) =>
             File.Create(path).Dispose();
 
-        protected override void DeleteFileSystemEntry(string path) =>
+        protected override void DeleteFileOrDirectory(string path) =>
             File.Delete(path);
 
-        protected override void CheckIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsDirectory(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -25,24 +25,24 @@ namespace System.IO.Tests
             Assert.True(fsi is FileInfo);
         }
 
-        protected override void CheckLinkExists(FileSystemInfo link) =>
+        protected override void AssertLinkExists(FileSystemInfo link) =>
             Assert.True(link.Exists); // For file symlinks, we return the exists info from the actual link, not the target
 
-        protected override void CheckExistsWhenNoTarget(FileSystemInfo link) =>
+        protected override void AssertExistsWhenNoTarget(FileSystemInfo link) =>
             Assert.True(link.Exists);
 
-        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        [Fact]
         public void CreateSymbolicLink_WrongTargetType()
         {
             // fileLink => directory
 
             string targetPath = GetRandomFilePath();
-            Directory.CreateDirectory(targetPath);
+            Directory.CreateDirectory(targetPath); // Creating directory when the link is a FileInfo
 
             string linkPath = GetRandomLinkPath();
-            var linkInfo = new FileInfo(linkPath);
+            var link = new FileInfo(linkPath);
 
-            Assert.Throws<IOException>(() => linkInfo.CreateAsSymbolicLink(targetPath));
+            Assert.Throws<IOException>(() => link.CreateAsSymbolicLink(targetPath));
         }
 
         [Fact]

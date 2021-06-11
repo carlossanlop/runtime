@@ -8,7 +8,7 @@ namespace System.IO
     /// <summary>Provides an implementation of FileSystem for Unix systems.</summary>
     internal static partial class FileSystem
     {
-        internal static bool DirectoryExists(ReadOnlySpan<char> fullPath)
+        public static bool DirectoryExists(ReadOnlySpan<char> fullPath)
         {
             Interop.ErrorInfo ignored;
             return DirectoryExists(fullPath, out ignored);
@@ -30,21 +30,6 @@ namespace System.IO
             //
             // See http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap04.html#tag_04_11 for details.
             return FileExists(Path.TrimEndingDirectorySeparator(fullPath), Interop.Sys.FileTypes.S_IFREG, out ignored);
-        }
-
-        private static bool LinkExists(ReadOnlySpan<char> fullPath, out Interop.ErrorInfo errorInfo)
-        {
-            Interop.Sys.FileStatus fileinfo;
-            errorInfo = default(Interop.ErrorInfo);
-
-            if (Interop.Sys.LStat(fullPath, out fileinfo) < 0)
-            {
-                // File not found
-                errorInfo = Interop.Sys.GetLastErrorInfo();
-                return false;
-            }
-
-            return (fileinfo.Mode & Interop.Sys.FileTypes.S_IFMT) == Interop.Sys.FileTypes.S_IFLNK;
         }
 
         private static bool FileExists(ReadOnlySpan<char> fullPath, int fileType, out Interop.ErrorInfo errorInfo)

@@ -8,10 +8,10 @@ namespace System.IO.Tests
 {
     public class File_SymbolicLinks : BaseSymbolicLinks_FilesAndDirectories
     {
-        protected override void CreateFileSystemEntry(string path) =>
+        protected override void CreateFileOrDirectory(string path) =>
             File.Create(path).Dispose();
 
-        protected override void DeleteFileSystemEntry(string path) =>
+        protected override void DeleteFileOrDirectory(string path) =>
             File.Delete(path);
 
         protected override FileSystemInfo CreateSymbolicLink(string path, string pathToTarget) =>
@@ -20,7 +20,7 @@ namespace System.IO.Tests
         protected override FileSystemInfo ResolveLinkTarget(string linkPath, bool returnFinalTarget = false) =>
             File.ResolveLinkTarget(linkPath, returnFinalTarget);
 
-        protected override void CheckIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsDirectory(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -29,13 +29,13 @@ namespace System.IO.Tests
             Assert.True(fsi is FileInfo);
         }
 
-        protected override void CheckLinkExists(FileSystemInfo link) =>
+        protected override void AssertLinkExists(FileSystemInfo link) =>
             Assert.True(link.Exists); // For file symlinks, we return the exists info from the actual link, not the target
 
-        protected override void CheckExistsWhenNoTarget(FileSystemInfo link) =>
+        protected override void AssertExistsWhenNoTarget(FileSystemInfo link) =>
             Assert.True(link.Exists);
 
-        [ConditionalFact(nameof(CanCreateSymbolicLinks))]
+        [Fact]
         public void CreateSymbolicLink_WrongTargetType()
         {
             // fileLink => directory

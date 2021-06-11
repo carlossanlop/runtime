@@ -6,6 +6,8 @@ using Xunit;
 
 namespace System.IO.Tests
 {
+    [ActiveIssue("https://github.com/dotnet/runtime/issues/34583", TestPlatforms.Windows, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
+    [ConditionalClass(typeof(BaseSymbolicLinks), nameof(CanCreateSymbolicLinks))]
     public abstract class BaseSymbolicLinks : FileSystemTest
     {
         protected DirectoryInfo CreateDirectoryContainingSelfReferencingSymbolicLink()
