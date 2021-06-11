@@ -10,13 +10,19 @@ namespace System.IO.Tests
         protected override FileSystemInfo GetFileSystemInfo(string path) =>
             new FileInfo(path);
 
-        protected override void CreateFileOrDirectory(string path) =>
-            File.Create(path).Dispose();
+        protected override void CreateFileOrDirectory(string path, bool createOpposite = false)
+        {
+            if (!createOpposite)
+            {
+                File.Create(path).Dispose();
+            }
+            else
+            {
+                Directory.CreateDirectory(path);
+            }
+        }
 
-        protected override void DeleteFileOrDirectory(string path) =>
-            File.Delete(path);
-
-        protected override void AssertIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsCorrectTypeAndDirectoryAttribute(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -30,20 +36,6 @@ namespace System.IO.Tests
 
         protected override void AssertExistsWhenNoTarget(FileSystemInfo link) =>
             Assert.True(link.Exists);
-
-        [Fact]
-        public void CreateSymbolicLink_WrongTargetType()
-        {
-            // fileLink => directory
-
-            string targetPath = GetRandomFilePath();
-            Directory.CreateDirectory(targetPath); // Creating directory when the link is a FileInfo
-
-            string linkPath = GetRandomLinkPath();
-            var link = new FileInfo(linkPath);
-
-            Assert.Throws<IOException>(() => link.CreateAsSymbolicLink(targetPath));
-        }
 
         [Fact]
         public void ResolveLinkTarget_LinkDoesNotExist() =>

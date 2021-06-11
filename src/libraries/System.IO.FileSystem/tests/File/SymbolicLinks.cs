@@ -6,21 +6,27 @@ using Xunit;
 
 namespace System.IO.Tests
 {
-    public class File_SymbolicLinks : BaseSymbolicLinks_FilesAndDirectories
+    public class File_SymbolicLinks : BaseSymbolicLinks_FileSystem
     {
-        protected override void CreateFileOrDirectory(string path) =>
-            File.Create(path).Dispose();
-
-        protected override void DeleteFileOrDirectory(string path) =>
-            File.Delete(path);
+        protected override void CreateFileOrDirectory(string path, bool createOpposite = false)
+        {
+            if (!createOpposite)
+            {
+                File.Create(path).Dispose();
+            }
+            else
+            {
+                Directory.CreateDirectory(path);
+            }
+        }
 
         protected override FileSystemInfo CreateSymbolicLink(string path, string pathToTarget) =>
             File.CreateSymbolicLink(path, pathToTarget);
 
-        protected override FileSystemInfo ResolveLinkTarget(string linkPath, bool returnFinalTarget = false) =>
+        protected override FileSystemInfo ResolveLinkTarget(string linkPath, string? expectedLinkTarget, bool returnFinalTarget = false) =>
             File.ResolveLinkTarget(linkPath, returnFinalTarget);
 
-        protected override void AssertIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsCorrectTypeAndDirectoryAttribute(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -34,16 +40,6 @@ namespace System.IO.Tests
 
         protected override void AssertExistsWhenNoTarget(FileSystemInfo link) =>
             Assert.True(link.Exists);
-
-        [Fact]
-        public void CreateSymbolicLink_WrongTargetType()
-        {
-            // fileLink => directory
-
-            string targetPath = GetRandomFilePath();
-            Directory.CreateDirectory(targetPath); // The underlying file system entry needs to be a directory
-            Assert.Throws<IOException>(() => CreateSymbolicLink(GetRandomLinkPath(), targetPath));
-        }
 
         [Fact]
         public void ResolveLinkTarget_LinkDoesNotExist() =>

@@ -8,17 +8,22 @@ namespace System.IO.Tests
 {
     public class DirectoryInfo_SymbolicLinks : BaseSymbolicLinks_FileSystemInfo
     {
-
         protected override FileSystemInfo GetFileSystemInfo(string path) =>
             new DirectoryInfo(path);
 
-        protected override void CreateFileOrDirectory(string path) =>
-            Directory.CreateDirectory(path);
+        protected override void CreateFileOrDirectory(string path, bool createOpposite = false)
+        {
+            if (!createOpposite)
+            {
+                Directory.CreateDirectory(path);
+            }
+            else
+            {
+                File.Create(path).Dispose();
+            }
+        }
 
-        protected override void DeleteFileOrDirectory(string path) =>
-            Directory.Delete(path, recursive: true);
-
-        protected override void AssertIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsCorrectTypeAndDirectoryAttribute(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -101,20 +106,6 @@ namespace System.IO.Tests
                 Assert.Throws<IOException>(() => testDirectory.EnumerateFileSystemInfos("*", options).Count());
                 Assert.Throws<IOException>(() => testDirectory.GetFileSystemInfos("*", options).Count());
             }
-        }
-
-        [Fact]
-        public void CreateSymbolicLink_WrongTargetType()
-        {
-            // dirLink -> file
-
-            string targetPath = GetRandomFilePath();
-            File.Create(targetPath).Dispose(); // Creating file when the link is a DirectoryInfo
-
-            string linkPath = GetRandomFilePath();
-            var link = new DirectoryInfo(linkPath);
-
-            Assert.Throws<IOException>(() => link.CreateAsSymbolicLink(targetPath));
         }
 
         [Fact]

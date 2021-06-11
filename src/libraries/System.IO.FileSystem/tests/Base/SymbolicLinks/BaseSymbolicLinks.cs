@@ -8,6 +8,7 @@ namespace System.IO.Tests
 {
     [ActiveIssue("https://github.com/dotnet/runtime/issues/34583", TestPlatforms.Windows, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
     [ConditionalClass(typeof(BaseSymbolicLinks), nameof(CanCreateSymbolicLinks))]
+    // Contains helper methods that are shared by all symbolic link test classes.
     public abstract class BaseSymbolicLinks : FileSystemTest
     {
         protected DirectoryInfo CreateDirectoryContainingSelfReferencingSymbolicLink()

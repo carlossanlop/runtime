@@ -6,21 +6,27 @@ using Xunit;
 
 namespace System.IO.Tests
 {
-    public class Directory_SymbolicLinks : BaseSymbolicLinks_FilesAndDirectories
+    public class Directory_SymbolicLinks : BaseSymbolicLinks_FileSystem
     {
-        protected override void CreateFileOrDirectory(string path) =>
-            Directory.CreateDirectory(path);
-
-        protected override void DeleteFileOrDirectory(string path) =>
-            Directory.Delete(path, recursive: true);
+        protected override void CreateFileOrDirectory(string path, bool createOpposite = false)
+        {
+            if (!createOpposite)
+            {
+                Directory.CreateDirectory(path);
+            }
+            else
+            {
+                File.Create(path).Dispose();
+            }
+        }
 
         protected override FileSystemInfo CreateSymbolicLink(string path, string pathToTarget) =>
             Directory.CreateSymbolicLink(path, pathToTarget);
 
-        protected override FileSystemInfo ResolveLinkTarget(string linkPath, bool returnFinalTarget = false) =>
+        protected override FileSystemInfo ResolveLinkTarget(string linkPath, string? expectedLinkTarget, bool returnFinalTarget = false) =>
             Directory.ResolveLinkTarget(linkPath, returnFinalTarget);
 
-        protected override void AssertIsDirectory(FileSystemInfo fsi)
+        protected override void AssertIsCorrectTypeAndDirectoryAttribute(FileSystemInfo fsi)
         {
             if (fsi.Exists)
             {
@@ -64,16 +70,6 @@ namespace System.IO.Tests
         {
             DirectoryInfo testDirectory = CreateDirectoryContainingSelfReferencingSymbolicLink();
             Assert.Single(Directory.EnumerateFileSystemEntries(testDirectory.FullName));
-        }
-
-        [Fact]
-        public void CreateSymbolicLink_WrongTargetType()
-        {
-            // dirLink -> file
-
-            string targetPath = GetRandomFilePath();
-            File.Create(targetPath).Dispose(); // The underlying file system entry needs to be a file
-            Assert.Throws<IOException>(() => CreateSymbolicLink(GetRandomFilePath(), targetPath));
         }
 
         [Fact]
