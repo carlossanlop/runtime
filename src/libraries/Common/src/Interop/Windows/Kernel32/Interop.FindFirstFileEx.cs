@@ -16,12 +16,12 @@ internal static partial class Interop
         [DllImport(Libraries.Kernel32, EntryPoint = "FindFirstFileExW", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true)]
         private static extern SafeFindHandle FindFirstFileExPrivate(string lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, ref WIN32_FIND_DATA lpFindFileData, FINDEX_SEARCH_OPS fSearchOp, IntPtr lpSearchFilter, int dwAdditionalFlags);
 
-        internal static SafeFindHandle FindFirstFile(string fileName, ref WIN32_FIND_DATA data)
+        internal static SafeFindHandle FindFirstFile(string fileName, ref WIN32_FIND_DATA data, int additionalFlags = 0)
         {
             fileName = PathInternal.EnsureExtendedPrefixIfNeeded(fileName);
 
             // use FindExInfoBasic since we don't care about short name and it has better perf
-            return FindFirstFileExPrivate(fileName, FINDEX_INFO_LEVELS.FindExInfoBasic, ref data, FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, 0);
+            return FindFirstFileExPrivate(fileName, FINDEX_INFO_LEVELS.FindExInfoBasic, ref data, FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, additionalFlags);
         }
 
         internal enum FINDEX_INFO_LEVELS : uint

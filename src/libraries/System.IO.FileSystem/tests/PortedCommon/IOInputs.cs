@@ -146,7 +146,7 @@ internal static class IOInputs
             yield return deviceName;
             yield return Path.Combine(root, deviceName);
             yield return Path.Combine(root, "Directory", deviceName);
-            yield return Path.Combine(new string(Path.DirectorySeparatorChar, 2), "LOCALHOST", deviceName);
+            //yield return Path.Combine(new string(Path.DirectorySeparatorChar, 2), "LOCALHOST", deviceName);
         }
     }
 
@@ -189,9 +189,9 @@ internal static class IOInputs
         yield return string.Format(@"C:\{0}\Filename.txt", component);
         yield return string.Format(@"C:\{0}\Filename.txt\", component);
         yield return string.Format(@"\\{0}\Share", component);
-        yield return string.Format(@"\\LOCALHOST\{0}", component);
-        yield return string.Format(@"\\LOCALHOST\{0}\FileName.txt", component);
-        yield return string.Format(@"\\LOCALHOST\Share\{0}", component);
+        //yield return string.Format(@"\\LOCALHOST\{0}", component);
+        //yield return string.Format(@"\\LOCALHOST\{0}\FileName.txt", component);
+        //yield return string.Format(@"\\LOCALHOST\Share\{0}", component);
     }
 
     public static IEnumerable<string> GetPathsLongerThanMaxDirectory(string rootPath)

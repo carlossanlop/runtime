@@ -333,7 +333,9 @@ namespace System.IO
         /// An I/O error occurred.</exception>
         public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
         {
+            PathInternal.ValidatePath(path, nameof(path));
             FileSystem.CreateSymbolicLink(path, pathToTarget, isDirectory: true);
+
             return new DirectoryInfo(path);
         }
 
