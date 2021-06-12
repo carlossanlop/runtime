@@ -1070,9 +1070,8 @@ namespace System.IO
         /// An I/O error occurred.</exception>
         public static FileSystemInfo CreateSymbolicLink(string path, string pathToTarget)
         {
-            PathInternal.ValidatePath(path, nameof(path));
+            FileSystem.VerifyValidPath(path, nameof(path));
             FileSystem.CreateSymbolicLink(path, pathToTarget, isDirectory: false);
-
             return new FileInfo(path);
         }
 

@@ -137,7 +137,7 @@ namespace System.IO
         public void CreateAsSymbolicLink(string pathToTarget)
         {
             FileSystem.CreateSymbolicLink(OriginalPath, pathToTarget, this is DirectoryInfo);
-            Invalidate(); // Why?
+            Invalidate();
         }
 
         /// <summary>

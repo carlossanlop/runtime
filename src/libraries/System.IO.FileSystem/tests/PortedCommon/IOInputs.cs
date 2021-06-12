@@ -146,7 +146,7 @@ internal static class IOInputs
             yield return deviceName;
             yield return Path.Combine(root, deviceName);
             yield return Path.Combine(root, "Directory", deviceName);
-            //yield return Path.Combine(new string(Path.DirectorySeparatorChar, 2), "LOCALHOST", deviceName);
+            yield return Path.Combine(new string(Path.DirectorySeparatorChar, 2), "LOCALHOST", deviceName);
         }
     }
 

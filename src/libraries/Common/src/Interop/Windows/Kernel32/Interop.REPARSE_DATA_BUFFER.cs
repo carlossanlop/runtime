@@ -12,25 +12,17 @@ internal static partial class Interop
         public const uint SYMLINK_FLAG_RELATIVE = 1;
 
         // https://msdn.microsoft.com/library/windows/hardware/ff552012.aspx
-        //[StructLayout(LayoutKind.Explicit)]
         [StructLayout(LayoutKind.Sequential)]
         public unsafe struct REPARSE_DATA_BUFFER
         {
-            //[FieldOffset(0)]
             public uint ReparseTag;
-            //[FieldOffset(4)]
             public ushort ReparseDataLength;
-            //[FieldOffset(6)]
             public ushort Reserved;
-            //[FieldOffset(8)]
             public SymbolicLinkReparseBuffer ReparseBufferSymbolicLink;
 
-            // We only need SymbolicLinkReparseBuffer.PathBuffer and its respective offsets and lengths.
-            // Commenting out the rest of the definition.
+            // We don't need all the fields; commenting out the rest.
 
-            //[FieldOffset(8)]
             //public MountPointReparseBuffer ReparseBufferMountPoint;
-            //[FieldOffset(8)]
             //public GenericReparseBuffer ReparseBufferGeneric;
 
             [StructLayout(LayoutKind.Sequential)]
@@ -52,8 +44,6 @@ internal static partial class Interop
             //    private ushort PrintNameOffset;
             //    private ushort PrintNameLength;
             //    private char _PathBuffer;
-            //    // public ReadOnlySpan<char> SubstituteName => TrailingArray<char>.GetBufferInBytes(in _PathBuffer, SubstituteNameLength, SubstituteNameOffset);
-            //    // public ReadOnlySpan<char> PrintName => TrailingArray<char>.GetBufferInBytes(in _PathBuffer, PrintNameLength, PrintNameOffset);
             //}
 
             //public struct GenericReparseBuffer

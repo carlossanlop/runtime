@@ -409,20 +409,16 @@ namespace System.IO
 
         public static void CreateSymbolicLink(string linkPath, string targetPath, bool isDirectory)
         {
-            PathInternal.ValidatePath(targetPath, nameof(targetPath));
+            VerifyValidPath(targetPath, nameof(targetPath));
 
             Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
             FillAttributeInfo(targetPath, ref data, returnErrorOnNotFound: false);
-
-            // Validate target matches link, if exists (file or directory).
-            // TODO: test if this condition works for link -> link.
             if (data.dwFileAttributes != -1 &&
                 isDirectory != ((data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) != 0))
             {
                 throw new IOException(SR.IO_InconsistentLinkType);
             }
 
-            // TODO: Validate if pinvoke throws if link already exists or if we should manually validate it.
             bool result = Interop.Kernel32.CreateSymbolicLink(linkPath, targetPath, isDirectory);
             if (!result)
             {
@@ -430,79 +426,11 @@ namespace System.IO
             }
         }
 
-        public static unsafe string GetLinkTarget(string linkPath, out bool isRelative)
-        {
-            using SafeFileHandle handle = GetHandle(linkPath,
-                Interop.Kernel32.FileOperations.FILE_FLAG_BACKUP_SEMANTICS | Interop.Kernel32.FileOperations.FILE_FLAG_OPEN_REPARSE_POINT);
-
-            const int OUT_BUFFER_SIZE = 1024;
-            byte* buffer = stackalloc byte[Interop.Kernel32.MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-
-            //bool success = Interop.Kernel32.DeviceIoControl(
-            //    handle,
-            //    Interop.Kernel32.FSCTL_GET_REPARSE_POINT,
-            //    lpInBuffer: IntPtr.Zero,
-            //    nInBufferSize: 0,
-            //    lpOutBuffer: buffer,
-            //    nOutBufferSize: OUT_BUFFER_SIZE,
-            //    out uint bytesReturned,
-            //    IntPtr.Zero);
-
-            //if (!success)
-            //{
-            //    throw Win32Marshal.GetExceptionForLastWin32Error(linkPath);
-            //}
-
-            var span = new ReadOnlySpan<byte>(buffer, OUT_BUFFER_SIZE);
-            ref readonly Interop.Kernel32.REPARSE_DATA_BUFFER rdb = ref MemoryMarshal.AsRef<Interop.Kernel32.REPARSE_DATA_BUFFER>(span);
-
-            isRelative = (rdb.ReparseBufferSymbolicLink.Flags & Interop.Kernel32.SYMLINK_FLAG_RELATIVE) != 0;
-
-            // NOTE FOR REVIEWERS: I'm not completely sure if we should use PrintName or SubstituteName instead.
-            // I noticed that SubstituteName contains \??\ at the beginning while PrintName does not.
-            // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/b41f1cbf-10df-4a47-98d4-1c52a833d913
-            int offset = sizeof(Interop.Kernel32.REPARSE_DATA_BUFFER) + rdb.ReparseBufferSymbolicLink.SubstituteNameOffset;
-            int length = rdb.ReparseBufferSymbolicLink.SubstituteNameLength;
-
-            ReadOnlySpan<char> linkTarget = MemoryMarshal.Cast<byte, char>(span.Slice(offset, length));
-            return linkTarget.ToString();
-        }
-
         public static unsafe FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
-            //Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
-            //int result = FillAttributeInfo(linkPath, ref data, returnErrorOnNotFound: false);
-
-            //Interop.Kernel32.WIN32_FIND_DATA data2 = default;
-            //using var handle = GetFindData2(linkPath, ref data2);
-
-            // Not a Reparse Point, hence not a Link, return null.
-            //if ((data.dwFileAttributes & (int)FileAttributes.ReparsePoint) == 0)
-            //{
-            //    return null;
-            //}
-
-            //if (data.dwFileAttributes == -1)
-            //{
-            //    throw new DirectoryNotFoundException(SR.Format(SR.IO_PathNotFound_Path, linkPath));
-            //}
-
-            //if (isDirectory != ((data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) != 0))
-            //{
-            //    throw new IOException(SR.IO_InconsistentSymlinkType);
-            //}
-
-            string? targetPath = returnFinalTarget ? GetFinalLinkTarget(linkPath, isDirectory) : GetImmediateLinkTarget(linkPath, isDirectory, throwOnNotFound: true);
-
-            // NOTE: GetFinalTarget returns the path with \\?\ prefix; GetLinkTarget returns \??\.
-            //string target = returnFinalTarget ?
-            //    GetFinalLinkTarget(linkPath) : null!;//GetLinkTarget(linkPath, out isRelative);
-
-            //if (isRelative)
-            //{
-            //    string parent = Path.GetDirectoryName(linkPath)!;
-            //    target = Path.Combine(parent, target);
-            //}
+            string? targetPath = returnFinalTarget ?
+                GetFinalLinkTarget(linkPath, isDirectory) :
+                GetImmediateLinkTarget(linkPath, isDirectory, throwOnNotFound: true);
 
             return targetPath == null ? null :
                 isDirectory ? new DirectoryInfo(targetPath) : new FileInfo(targetPath);
@@ -598,7 +526,6 @@ namespace System.IO
         private static unsafe string? GetFinalLinkTarget(string linkPath, bool isDirectory)
         {
             Interop.Kernel32.WIN32_FIND_DATA data = default;
-            // TODO: Verify if handle from FindFirstFileEx can be used for GetFinalPathNameByHandle.
             GetFindData(linkPath, isDirectory, ref data);
 
             // The file or directory is not a reparse point.
@@ -613,6 +540,7 @@ namespace System.IO
                 GetHandle(linkPath,
                     Interop.Kernel32.FileOperations.OPEN_EXISTING |
                     Interop.Kernel32.FileOperations.FILE_FLAG_BACKUP_SEMANTICS);
+            // TODO: Should I validate handle?
 
             char* buffer = stackalloc char[Interop.Kernel32.MAX_PATH];
             uint res = Interop.Kernel32.GetFinalPathNameByHandle(handle, buffer, Interop.Kernel32.MAX_PATH, Interop.Kernel32.FILE_NAME_NORMALIZED);
@@ -644,7 +572,7 @@ namespace System.IO
                 dwFlagsAndAttributes: flags,
                 hTemplateFile: IntPtr.Zero);
 
-            return handle;//handle.IsInvalid ? throw Win32Marshal.GetExceptionForLastWin32Error(path) : handle;
+            return handle;
         }
     }
 }

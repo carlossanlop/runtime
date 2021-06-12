@@ -245,21 +245,5 @@ namespace System.IO
         /// </summary>
         internal static bool EndsInDirectorySeparator(ReadOnlySpan<char> path) =>
             path.Length > 0 && IsDirectorySeparator(path[path.Length - 1]);
-
-        internal static void ValidatePath(string path, string argName)
-        {
-            if (path == null)
-            {
-                throw new ArgumentNullException(argName);
-            }
-            else if (path.Length == 0)
-            {
-                throw new ArgumentException(SR.Arg_PathEmpty, argName);
-            }
-            else if (path.Contains('\0'))
-            {
-                throw new ArgumentException(SR.Argument_InvalidPathChars, argName);
-            }
-        }
     }
 }
