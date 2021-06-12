@@ -19,7 +19,7 @@ namespace System.IO
             return FileExists(fullPath, Interop.Sys.FileTypes.S_IFDIR, out errorInfo);
         }
 
-        internal static bool FileExists(ReadOnlySpan<char> fullPath)
+        public static bool FileExists(ReadOnlySpan<char> fullPath)
         {
             Interop.ErrorInfo ignored;
             // File.Exists() explicitly checks for a trailing separator and returns false if found. FileInfo.Exists and all other

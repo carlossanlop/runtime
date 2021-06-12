@@ -541,13 +541,19 @@ namespace System.IO
         /// If linkPath is not a link or the target does not exist, returns null.</returns>
         internal static string? GetLinkTarget(string linkPath) => Interop.Sys.ReadLink(linkPath);
 
-        internal static void CreateSymbolicLink(string linkPath, string target, bool isDirectory)
+        /// <summary>
+        /// Creates a file symbolic link identified by path that points to pathToTarget..
+        /// </summary>
+        /// <param name="path">The path where the symbolic link should be created.</param>
+        /// <param name="pathToTarget">The path of the target to which the symbolic link points.</param>
+        /// <param name="isDirectory">True if the pathToTarget represents a directory or a symlink to a directory.</param>
+        internal static void CreateSymbolicLink(string path, string pathToTarget, bool isDirectory)
         {
-            VerifyValidPath(linkPath, nameof(linkPath));
-            VerifyValidPath(target, nameof(target));
+            VerifyValidPath(path, nameof(path));
+            VerifyValidPath(pathToTarget, nameof(pathToTarget));
 
             // Fail if the target exists but is not consistent with the expected filesystem entry type
-            if (Interop.Sys.LStat(target, out Interop.Sys.FileStatus targetInfo) == 0)
+            if (Interop.Sys.LStat(pathToTarget, out Interop.Sys.FileStatus targetInfo) == 0)
             {
                 // Skip this check if the target is a link:
                 // - It could be part of a chain of links, or
@@ -559,30 +565,22 @@ namespace System.IO
                 }
             }
 
-            if (Interop.Sys.SymLink(target, linkPath) < 0)
-            {
-                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
-            }
+            Interop.CheckIo(Interop.Sys.SymLink(pathToTarget, path), path, isDirectory);
         }
 
         /// <summary>Gets the target of the specified link path.</summary>
         /// <param name="linkPath">A path to a link file.</param>
-        /// <param name="returnFinalTarget"><see langword="true"/> to return the final target file or directory in a chain of links; <see langword="false"/> to
-        /// return the immediate next target.</param>
-        /// <param name="isDirectory"><see langword="true"/> if the link points to a directory; <see langword="false"/> if the link points to a file.</param>
-        /// <returns>If the specified <paramref name="linkPath"/> represents a link file and it exists, returns a <see cref="FileInfo"/> if
-        /// <paramref name="isDirectory"/> is <see langword="false"/>, or a <see cref="DirectoryInfo"/> if <paramref name="isDirectory"/> is <see langword="true"/>,
-        /// independently if the target file/directory exists or not.
-        /// If the specified <paramref name="linkPath"/> is not a link file or it does not exist, returns <see langword="null"/>.</returns>
+        /// <param name="returnFinalTarget">true to return the final target file or directory in a chain of links; false to return the immediate next target.</param>
+        /// <param name="isDirectory">True if the linkPath points to a directory or a symlink to a directory.</param>
+        /// <returns>If the specified linkPath represents a link file and it exists, returns a FileInfo if isDirectory
+        /// is false, or a DirectoryInfo if isDirectory is true, independently if the target file/directory exists or not.
+        /// If the specified linkPath is not a link file or it does not exist, returns null.</returns>
         internal static FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
             VerifyValidPath(linkPath, nameof(linkPath));
 
             // throws if the current link file does not exist
-            if (Interop.Sys.LStat(linkPath, out _) < 0)
-            {
-                throw Interop.GetExceptionForIoErrno(Interop.Sys.GetLastErrorInfo(), linkPath, isDirectory);
-            }
+            Interop.CheckIo(Interop.Sys.LStat(linkPath, out _), linkPath, isDirectory);
 
             string? targetPath = GetLinkTarget(linkPath);
             if (targetPath == null)
@@ -627,7 +625,7 @@ namespace System.IO
             if (visitCount >= MaxFollowedLinks)
             {
                 // We went over the limit and couldn't reach the final target
-                throw new IndexOutOfRangeException(SR.Format(SR.IndexOutOfRange_SymbolicLinkLevels, linkPath));
+                throw new IOException(SR.Format(SR.IndexOutOfRange_SymbolicLinkLevels, linkPath));
             }
 
             Debug.Assert(targetPath != null);

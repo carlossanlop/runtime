@@ -9,19 +9,19 @@ namespace System.IO
     /// <summary>Provides a platform independent implementation of FileSystem.</summary>
     internal static partial class FileSystem
     {
-        private static void VerifyValidPath(string path, string name)
+        private static void VerifyValidPath(string path, string argName)
         {
             if (path == null)
             {
-                throw new ArgumentNullException(name);
+                throw new ArgumentNullException(argName);
             }
             else if (path.Length == 0)
             {
-                throw new ArgumentException(SR.Arg_PathEmpty_Name, name);
+                throw new ArgumentException(SR.Arg_PathEmpty, argName);
             }
             else if (path.Contains('\0'))
             {
-                throw new ArgumentException(SR.Argument_InvalidPathChars, name);
+                throw new ArgumentException(SR.Argument_InvalidPathChars, argName);
             }
         }
     }

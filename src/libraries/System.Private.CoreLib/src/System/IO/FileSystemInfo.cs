@@ -119,18 +119,7 @@ namespace System.IO
         /// If this <see cref="FileSystemInfo"/> instance represents a link, returns the link target's path.
         /// If a link does not exist in <see cref="FullName"/>, or this instance does not represent a link, returns <see langword="null"/>.
         /// </summary>
-        public string? LinkTarget
-        {
-            get
-            {
-                if (_linkTarget == null)
-                {
-                    _linkTarget = FileSystem.GetLinkTarget(FullPath);
-                }
-
-                return _linkTarget;
-            }
-        }
+        public string? LinkTarget => _linkTarget ??= FileSystem.GetLinkTarget(FullPath);
 
         /// <summary>
         /// Creates a symbolic link located in <see cref="FullName"/> that points to the specified <paramref name="pathToTarget"/>.

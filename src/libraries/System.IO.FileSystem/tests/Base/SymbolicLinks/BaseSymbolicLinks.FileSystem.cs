@@ -227,8 +227,8 @@ namespace System.IO.Tests
             FileSystemInfo link2Target = ResolveLinkTarget(link2Path, expectedLinkTarget: link1Path);
 
             // Cannot get target when following symlinks
-            Assert.Throws<IndexOutOfRangeException>(() => ResolveLinkTarget(link1Path, expectedLinkTarget: link2Path, returnFinalTarget: true));
-            Assert.Throws<IndexOutOfRangeException>(() => ResolveLinkTarget(link2Path, expectedLinkTarget: link1Path, returnFinalTarget: true));
+            Assert.Throws<IOException>(() => ResolveLinkTarget(link1Path, expectedLinkTarget: link2Path, returnFinalTarget: true));
+            Assert.Throws<IOException>(() => ResolveLinkTarget(link2Path, expectedLinkTarget: link1Path, returnFinalTarget: true));
         }
 
         [Fact]

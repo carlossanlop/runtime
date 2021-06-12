@@ -1056,8 +1056,8 @@ namespace System.IO
         /// <summary>
         /// Creates a file symbolic link identified by <paramref name="path"/> that points to <paramref name="pathToTarget"/>.
         /// </summary>
-        /// <param name="path">The absolute path where the symbolic link should be created.</param>
-        /// <param name="pathToTarget">The target of the file symbolic link..</param>
+        /// <param name="path">The path where the symbolic link should be created.</param>
+        /// <param name="pathToTarget">The path of the target to which the symbolic link points.</param>
         /// <returns>A <see cref="FileInfo"/> instance that wraps the newly created file symbolic link.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="path"/> or <paramref name="pathToTarget"/> is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentException"><paramref name="path"/> or <paramref name="pathToTarget"/> is empty.
