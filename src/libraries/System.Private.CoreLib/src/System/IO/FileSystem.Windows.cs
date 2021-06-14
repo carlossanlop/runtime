@@ -407,26 +407,24 @@ namespace System.IO
         public static string[] GetLogicalDrives()
             => DriveInfoInternal.GetLogicalDrives();
 
-        public static void CreateSymbolicLink(string linkPath, string targetPath, bool isDirectory)
+        internal static void CreateSymbolicLink(string path, string pathToTarget, bool isDirectory)
         {
-            VerifyValidPath(targetPath, nameof(targetPath));
-
             Interop.Kernel32.WIN32_FILE_ATTRIBUTE_DATA data = default;
-            FillAttributeInfo(targetPath, ref data, returnErrorOnNotFound: false);
+            FillAttributeInfo(pathToTarget, ref data, returnErrorOnNotFound: false);
             if (data.dwFileAttributes != -1 &&
                 isDirectory != ((data.dwFileAttributes & Interop.Kernel32.FileAttributes.FILE_ATTRIBUTE_DIRECTORY) != 0))
             {
                 throw new IOException(SR.IO_InconsistentLinkType);
             }
 
-            bool result = Interop.Kernel32.CreateSymbolicLink(linkPath, targetPath, isDirectory);
+            bool result = Interop.Kernel32.CreateSymbolicLink(path, pathToTarget, isDirectory);
             if (!result)
             {
-                throw Win32Marshal.GetExceptionForLastWin32Error(linkPath);
+                throw Win32Marshal.GetExceptionForLastWin32Error(path);
             }
         }
 
-        public static unsafe FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
+        internal static unsafe FileSystemInfo? ResolveLinkTarget(string linkPath, bool returnFinalTarget, bool isDirectory)
         {
             string? targetPath = returnFinalTarget ?
                 GetFinalLinkTarget(linkPath, isDirectory) :
@@ -440,7 +438,7 @@ namespace System.IO
         /// Gets reparse point information associated to <paramref name="linkPath"/>.
         /// </summary>
         /// <returns>The immediate link target, absolute or relative or null if the file is not a supported link.</returns>
-        public static unsafe string? GetImmediateLinkTarget(string linkPath, bool isDirectory, bool throwOnNotFound)
+        internal static unsafe string? GetImmediateLinkTarget(string linkPath, bool isDirectory, bool throwOnNotFound)
         {
             using SafeFileHandle handle =
                 GetHandle(linkPath,
