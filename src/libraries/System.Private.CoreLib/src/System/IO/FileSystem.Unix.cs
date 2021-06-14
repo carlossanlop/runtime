@@ -539,7 +539,7 @@ namespace System.IO
         /// <param name="linkPath">A path to a link file.</param>
         /// <returns>If linkPath represents a link file and it exists, returns the link's target path.
         /// If linkPath is not a link or the target does not exist, returns null.</returns>
-        internal static string? GetLinkTarget(string linkPath) => Interop.Sys.ReadLink(linkPath);
+        internal static string? GetLinkTarget(string linkPath, bool isDirectory) => Interop.Sys.ReadLink(linkPath);
 
         /// <summary>
         /// Creates a file symbolic link identified by path that points to pathToTarget..

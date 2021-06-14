@@ -428,17 +428,20 @@ namespace System.IO
         {
             string? targetPath = returnFinalTarget ?
                 GetFinalLinkTarget(linkPath, isDirectory) :
-                GetImmediateLinkTarget(linkPath, isDirectory, throwOnNotFound: true);
+                GetImmediateLinkTarget(linkPath, isDirectory, throwOnNotFound: true, normalize: true);
 
             return targetPath == null ? null :
                 isDirectory ? new DirectoryInfo(targetPath) : new FileInfo(targetPath);
         }
 
+        internal static string? GetLinkTarget(string linkPath, bool isDirectory)
+            => GetImmediateLinkTarget(linkPath, isDirectory, throwOnNotFound: false, normalize: false);
+
         /// <summary>
         /// Gets reparse point information associated to <paramref name="linkPath"/>.
         /// </summary>
         /// <returns>The immediate link target, absolute or relative or null if the file is not a supported link.</returns>
-        internal static unsafe string? GetImmediateLinkTarget(string linkPath, bool isDirectory, bool throwOnNotFound)
+        internal static unsafe string? GetImmediateLinkTarget(string linkPath, bool isDirectory, bool throwOnNotFound, bool normalize)
         {
             using SafeFileHandle handle =
                 GetHandle(linkPath,
@@ -505,7 +508,7 @@ namespace System.IO
                 ReadOnlySpan<char> targetPath = MemoryMarshal.Cast<byte, char>(bufferSpan.Slice(substituteNameOffset, substituteNameLength));
 
                 // Target path is relative, we need to append the link directory.
-                if ((rdb.ReparseBufferSymbolicLink.Flags & Interop.Kernel32.SYMLINK_FLAG_RELATIVE) != 0)
+                if (normalize && (rdb.ReparseBufferSymbolicLink.Flags & Interop.Kernel32.SYMLINK_FLAG_RELATIVE) != 0)
                 {
                     targetPath = Path.Join(Path.GetDirectoryName(linkPath.AsSpan()), targetPath);
                 }
