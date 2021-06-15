@@ -35,43 +35,36 @@ internal static partial class Interop
             // Use an initial buffer size that prevents disposing and renting
             // a second time when calling ConvertAndTerminateString.
             int pathBufferSize = Encoding.UTF8.GetMaxByteCount(path.Length) + 1;
-            var converter = new ValueUtf8Converter(stackalloc byte[pathBufferSize]);
+            using var converter = new ValueUtf8Converter(stackalloc byte[pathBufferSize]);
 
-            try
+            while (true)
             {
-                while (true)
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(outputBufferSize);
+                try
                 {
-                    byte[] buffer = ArrayPool<byte>.Shared.Rent(outputBufferSize);
-                    try
-                    {
-                        int resultLength = Interop.Sys.ReadLink(
-                            ref MemoryMarshal.GetReference(converter.ConvertAndTerminateString(path)),
-                            buffer,
-                            buffer.Length);
+                    int resultLength = Interop.Sys.ReadLink(
+                        ref MemoryMarshal.GetReference(converter.ConvertAndTerminateString(path)),
+                        buffer,
+                        buffer.Length);
 
-                        if (resultLength < 0)
-                        {
-                            // error
-                            return null;
-                        }
-                        else if (resultLength < buffer.Length)
-                        {
-                            // success
-                            return Encoding.UTF8.GetString(buffer, 0, resultLength);
-                        }
-                    }
-                    finally
+                    if (resultLength < 0)
                     {
-                        ArrayPool<byte>.Shared.Return(buffer);
+                        // error
+                        return null;
                     }
-
-                    // Output buffer was too small, loop around again and try with a larger buffer.
-                    outputBufferSize *= 2;
+                    else if (resultLength < buffer.Length)
+                    {
+                        // success
+                        return Encoding.UTF8.GetString(buffer, 0, resultLength);
+                    }
                 }
-            }
-            finally
-            {
-                converter.Dispose();
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+
+                // Output buffer was too small, loop around again and try with a larger buffer.
+                outputBufferSize *= 2;
             }
         }
     }
