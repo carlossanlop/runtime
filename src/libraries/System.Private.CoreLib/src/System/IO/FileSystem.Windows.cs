@@ -509,7 +509,7 @@ namespace System.IO
                 // Target path is relative, we need to append the link directory.
                 if (normalize && (rdb.ReparseBufferSymbolicLink.Flags & Interop.Kernel32.SYMLINK_FLAG_RELATIVE) != 0)
                 {
-                    targetPath = Path.Join(Path.GetDirectoryName(linkPath.AsSpan()), targetPath);
+                    return Path.Join(Path.GetDirectoryName(linkPath.AsSpan()), targetPath);
                 }
 
                 return targetPath.ToString();

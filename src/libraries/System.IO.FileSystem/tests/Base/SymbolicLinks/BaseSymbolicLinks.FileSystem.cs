@@ -37,7 +37,7 @@ namespace System.IO.Tests
             }
 
             // Windows syscalls remove the redundant segments in the link target path.
-            // We will remove them from the expected path when testing Windows but keep them when testing Unix, which doesn't removes them.
+            // We will remove them from the expected path when testing Windows but keep them when testing Unix, which doesn't remove them.
             int rootLength = PathInternal.GetRootLength(expected);
             if (rootLength > 0)
             {
