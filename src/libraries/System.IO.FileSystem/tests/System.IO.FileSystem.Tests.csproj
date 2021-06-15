@@ -5,6 +5,7 @@
     <TargetFrameworks>$(NetCoreAppCurrent)-windows;$(NetCoreAppCurrent)-Unix;$(NetCoreAppCurrent)-Browser</TargetFrameworks>
 
     <WasmXHarnessMonoArgs>--working-dir=/test-dir</WasmXHarnessMonoArgs>
+    <StringResourcesPath>../../System.Private.CoreLib/src/Resources/Strings.resx</StringResourcesPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Base\BaseGetSetAttributes.cs" />
@@ -68,6 +69,9 @@
     <Compile Include="$(CommonPath)Interop\Windows\Kernel32\Interop.FILE_STANDARD_INFO.cs" Link="Interop\Windows\Interop.FILE_STANDARD_INFO.cs" />
     <Compile Include="$(CommonPath)Interop\Windows\Interop.Libraries.cs" Link="Interop\Windows\Interop.Libraries.cs" />
     <Compile Include="$(CommonPath)Interop\Windows\Kernel32\Interop.GetFileInformationByHandleEx.cs" Link="Interop\Windows\Interop.GetFileInformationByHandleEx.cs" />
+    <Compile Include="$(CommonPath)System\Text\ValueStringBuilder.cs" Link="Common\System\Text\ValueStringBuilder.cs" />
+    <Compile Include="$(CoreLibSharedDir)System\IO\PathInternal.cs" Link="Common\System\IO\PathInternal.cs" />
+    <Compile Include="$(CoreLibSharedDir)System\IO\PathInternal.Windows.cs" Link="Common\System\IO\PathInternal.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsBrowser)' == 'true'">
     <Compile Include="FileSystemTest.Browser.cs" />
