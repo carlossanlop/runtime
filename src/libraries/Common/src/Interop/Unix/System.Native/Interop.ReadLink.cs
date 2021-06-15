@@ -30,13 +30,18 @@ internal static partial class Interop
         /// <returns>Returns the link to the target path on success; and null otherwise.</returns>
         internal static string? ReadLink(ReadOnlySpan<char> path)
         {
-            int bufferSize = Math.Min(path.Length, DefaultPathBufferSize);
-            var converter = new ValueUtf8Converter(stackalloc byte[bufferSize]);
+            int outputBufferSize = DefaultPathBufferSize;
+
+            // Use an initial buffer size that prevents disposing and renting
+            // a second time when calling ConvertAndTerminateString.
+            int pathBufferSize = Encoding.UTF8.GetMaxByteCount(path.Length) + 1;
+            var converter = new ValueUtf8Converter(stackalloc byte[pathBufferSize]);
+
             try
             {
                 while (true)
                 {
-                    byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                    byte[] buffer = ArrayPool<byte>.Shared.Rent(outputBufferSize);
                     try
                     {
                         int resultLength = Interop.Sys.ReadLink(
@@ -60,8 +65,8 @@ internal static partial class Interop
                         ArrayPool<byte>.Shared.Return(buffer);
                     }
 
-                    // buffer was too small, loop around again and try with a larger buffer.
-                    bufferSize *= 2;
+                    // Output buffer was too small, loop around again and try with a larger buffer.
+                    outputBufferSize *= 2;
                 }
             }
             finally

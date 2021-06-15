@@ -607,7 +607,7 @@ namespace System.IO
             if (visitCount >= MaxFollowedLinks)
             {
                 // We went over the limit and couldn't reach the final target
-                throw new IOException(SR.Format(SR.Arg_SymbolicLinkLevels, linkPath));
+                throw new IOException(SR.Format(SR.IO_TooManySymbolicLinkLevels, linkPath));
             }
 
             Debug.Assert(sb.Length > 0);
