@@ -538,13 +538,13 @@ namespace System.IO
 
         /// <summary>Gets the path of the target of the specified link.</summary>
         /// <param name="linkPath">A path to a link file.</param>
-        /// <param name="isDirectory">Whether the link represents a directory or not. Irrelevant in Unix since readlink does not care.</param>
+        /// <param name="isDirectory">Whether the link represents a directory or not. Irrelevant in Unix since readlink does not care about the underlying type.</param>
         /// <returns>If linkPath represents a link file and it exists, returns the link's target path.
         /// If linkPath is not a link or the target does not exist, returns null.</returns>
         internal static string? GetLinkTarget(ReadOnlySpan<char> linkPath, bool isDirectory) => Interop.Sys.ReadLink(linkPath);
 
         /// <summary>
-        /// Creates a file symbolic link identified by path that points to pathToTarget..
+        /// Creates a file symbolic link identified by path that points to pathToTarget.
         /// </summary>
         /// <param name="path">The path where the symbolic link should be created.</param>
         /// <param name="pathToTarget">The path of the target to which the symbolic link points.</param>
@@ -579,18 +579,19 @@ namespace System.IO
             // throws if the current link file does not exist
             Interop.CheckIo(Interop.Sys.LStat(linkPath, out _), linkPath, isDirectory);
 
-            ValueStringBuilder sb = new(stackalloc char[Interop.PathStackBufferSize]);
+            ValueStringBuilder sb = new(stackalloc char[Interop.DefaultPathBufferSize]);
             sb.Append(linkPath);
 
             int maxVisits = returnFinalTarget ? MaxFollowedLinks : 1;
-            int visitCount = 1;
-            while (visitCount <= maxVisits)
+            int visitCount = 0;
+            while (visitCount < maxVisits)
             {
                 if (!TryGetLinkTarget(ref sb))
                 {
-                    if (visitCount == 1)
+                    if (visitCount == 0)
                     {
-                        // Special case: linkPath exists but is not a link
+                        // Special case: Reaching here means linkPath is not a link,
+                        // but we know it exists because we did an lstat at the top
                         sb.Dispose();
                         return null;
                     }

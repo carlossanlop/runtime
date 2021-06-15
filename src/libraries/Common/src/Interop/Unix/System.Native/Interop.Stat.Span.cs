@@ -14,7 +14,7 @@ internal static partial class Interop
 
         internal static int Stat(ReadOnlySpan<char> path, out FileStatus output)
         {
-            var converter = new ValueUtf8Converter(stackalloc byte[PathStackBufferSize]);
+            var converter = new ValueUtf8Converter(stackalloc byte[DefaultPathBufferSize]);
             int result = Stat(ref MemoryMarshal.GetReference(converter.ConvertAndTerminateString(path)), out output);
             converter.Dispose();
             return result;
@@ -25,7 +25,7 @@ internal static partial class Interop
 
         internal static int LStat(ReadOnlySpan<char> path, out FileStatus output)
         {
-            var converter = new ValueUtf8Converter(stackalloc byte[PathStackBufferSize]);
+            var converter = new ValueUtf8Converter(stackalloc byte[DefaultPathBufferSize]);
             int result = LStat(ref MemoryMarshal.GetReference(converter.ConvertAndTerminateString(path)), out output);
             converter.Dispose();
             return result;

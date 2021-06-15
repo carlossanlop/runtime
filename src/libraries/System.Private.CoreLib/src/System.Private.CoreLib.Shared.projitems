@@ -1994,9 +1994,6 @@
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.ReadLink.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.ReadLink.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.ReadLink.Span.cs">
-      <Link>Common\Interop\Unix\System.Native\Interop.ReadLink.Span.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.Rename.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.Rename.cs</Link>
     </Compile>
