@@ -1877,6 +1877,9 @@
     <Compile Include="$(CommonPath)Interop\Unix\Interop.Libraries.cs">
       <Link>Common\Interop\Unix\Interop.Libraries.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)Interop\Unix\Interop.PathStackBufferSize.cs">
+      <Link>Common\Interop\Unix\Interop.PathStackBufferSize.cs</Link>
+    </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.Access.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.Access.cs</Link>
     </Compile>
@@ -1990,6 +1993,9 @@
     </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.ReadLink.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.ReadLink.cs</Link>
+    </Compile>
+    <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.ReadLink.Span.cs">
+      <Link>Common\Interop\Unix\System.Native\Interop.ReadLink.Span.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.Rename.cs">
       <Link>Common\Interop\Unix\System.Native\Interop.Rename.cs</Link>

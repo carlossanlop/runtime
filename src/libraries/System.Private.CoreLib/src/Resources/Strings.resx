@@ -723,6 +723,9 @@
   <data name="Arg_SecurityException" xml:space="preserve">
     <value>Security error.</value>
   </data>
+  <data name="Arg_SymbolicLinkLevels" xml:space="preserve">
+    <value>Too many levels of symbolic links in '{0}'.</value>
+  </data>
   <data name="SerializationException" xml:space="preserve">
     <value>Serialization error.</value>
   </data>
@@ -2328,9 +2331,6 @@
   </data>
   <data name="IndexOutOfRange_UMSPosition" xml:space="preserve">
     <value>Unmanaged memory stream position was beyond the capacity of the stream.</value>
-  </data>
-  <data name="IndexOutOfRange_SymbolicLinkLevels" xml:space="preserve">
-    <value>Too many levels of symbolic links in '{0}'.</value>
   </data>
   <data name="InsufficientMemory_MemFailPoint" xml:space="preserve">
     <value>Insufficient available memory to meet the expected demands of an operation at this time.  Please try again later.</value>
