@@ -561,7 +561,7 @@ namespace System.IO
 
             // If the function succeeds, the return value is the length of the string received by lpszFilePath, in TCHARs.
             // This value does not include the size of the terminating null character.
-            return new string(buffer, 0, (int)res);//new ReadOnlySpan<char>(buffer, (int)res).ToString();
+            return new string(buffer, 0, (int)res);
         }
 
         private static unsafe SafeFileHandle OpenSafeFileHandle(string path, int flags)
