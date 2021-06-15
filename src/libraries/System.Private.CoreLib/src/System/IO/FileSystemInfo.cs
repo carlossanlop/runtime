@@ -136,7 +136,7 @@ namespace System.IO
         /// An I/O error occurred.</exception>
         public void CreateAsSymbolicLink(string pathToTarget)
         {
-            PathInternal.VerifyValidPath(pathToTarget, nameof(pathToTarget));
+            FileSystem.VerifyValidPath(pathToTarget, nameof(pathToTarget));
             FileSystem.CreateSymbolicLink(OriginalPath, pathToTarget, this is DirectoryInfo);
             Invalidate();
         }
