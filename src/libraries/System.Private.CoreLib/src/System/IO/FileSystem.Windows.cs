@@ -443,8 +443,7 @@ namespace System.IO
         /// <returns>The immediate link target, absolute or relative or null if the file is not a supported link.</returns>
         internal static unsafe string? GetImmediateLinkTarget(string linkPath, bool isDirectory, bool throwOnNotFound, bool normalize)
         {
-            using SafeFileHandle handle =
-                GetHandle(linkPath,
+            using SafeFileHandle handle = OpenSafeFileHandle(linkPath,
                     Interop.Kernel32.FileOperations.FILE_FLAG_BACKUP_SEMANTICS |
                     Interop.Kernel32.FileOperations.FILE_FLAG_OPEN_REPARSE_POINT);
 
@@ -537,11 +536,14 @@ namespace System.IO
                 return null;
             }
 
-            using SafeFileHandle handle =
-                GetHandle(linkPath,
+            using SafeFileHandle handle = OpenSafeFileHandle(linkPath,
                     Interop.Kernel32.FileOperations.OPEN_EXISTING |
                     Interop.Kernel32.FileOperations.FILE_FLAG_BACKUP_SEMANTICS);
-            // TODO: Should I validate handle?
+
+            if (handle.IsInvalid)
+            {
+                Win32Marshal.GetExceptionForLastWin32Error(linkPath);
+            }
 
             char* buffer = stackalloc char[Interop.Kernel32.MAX_PATH];
             uint res = Interop.Kernel32.GetFinalPathNameByHandle(handle, buffer, Interop.Kernel32.MAX_PATH, Interop.Kernel32.FILE_NAME_NORMALIZED);
@@ -562,7 +564,7 @@ namespace System.IO
             return new string(buffer, 0, (int)res);//new ReadOnlySpan<char>(buffer, (int)res).ToString();
         }
 
-        private static unsafe SafeFileHandle GetHandle(string path, int flags)
+        private static unsafe SafeFileHandle OpenSafeFileHandle(string path, int flags)
         {
             SafeFileHandle handle = Interop.Kernel32.CreateFile(
                 path,

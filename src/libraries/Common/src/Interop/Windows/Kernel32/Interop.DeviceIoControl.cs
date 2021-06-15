@@ -9,7 +9,7 @@ internal static partial class Interop
 {
     internal static partial class Kernel32
     {
-        // https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_reparse_point
+        // https://docs.microsoft.com/windows/win32/api/winioctl/ni-winioctl-fsctl_get_reparse_point
         internal const int FSCTL_GET_REPARSE_POINT = 0x000900a8;
 
         [DllImport(Libraries.Kernel32, EntryPoint = "DeviceIoControl", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true)]
