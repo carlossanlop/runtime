@@ -14,6 +14,9 @@
     <Compile Include="System\IO\PathTests_Windows.cs" />
     <Compile Include="System\IO\PathTests_Unix.cs" />
     <Compile Include="System\IO\PathTests_Join.cs" />
+    <Compile Include="System\IO\RedundantSegmentsTestsBase.cs" />
+    <Compile Include="System\IO\RedundantSegmentsTests_Windows.cs" />
+    <Compile Include="System\IO\RedundantSegmentsTests_Unix.cs" />
     <Compile Include="System\OperatingSystemTests.cs" />
     <Compile Include="System\Runtime\Versioning\VersioningHelperTests.cs" />
     <Compile Include="System\AppDomainTests.cs" />
