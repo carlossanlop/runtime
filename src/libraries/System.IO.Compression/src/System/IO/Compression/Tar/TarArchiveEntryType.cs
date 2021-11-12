@@ -6,6 +6,7 @@ namespace System.IO.Compression
     public enum TarArchiveEntryType
     {
         OldNormal = '\0',
+        Normal = '0',
         Link = '1',
         SymbolicLink = '2',
         Character = '3',

@@ -35,6 +35,7 @@ namespace System.IO.Compression
                 switch (_header.Format)
                 {
                     case TarFormat.V7:
+                    case TarFormat.Ustar:
                         return TarArchive.RecordSize + Length;
                     default:
                         throw new NotImplementedException();
