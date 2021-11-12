@@ -86,6 +86,49 @@ namespace System.IO.Compression
         public override System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
         public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
     }
+    public class TarArchive : IDisposable
+    {
+        public System.IO.Compression.TarOptions Options { get { throw null; } }
+        public TarArchive(System.IO.Stream stream, System.IO.Compression.TarOptions? options) { }
+        public void Dispose() { }
+        protected virtual void Dispose(bool disposing) { }
+        public System.IO.Compression.TarArchiveEntry? GetNextEntry() { throw null; }
+    }
+    public class TarArchiveEntry
+    {
+        internal TarArchiveEntry() { }
+        public int Checksum { get { throw null; } }
+        public long Length { get { throw null; } }
+        public string LinkName { get { throw null; } }
+        public string Name { get { throw null; } }
+        public System.IO.Compression.TarArchiveEntryType TypeFlag { get { throw null; } }
+        public System.IO.Stream Open() { throw null; }
+        public override string ToString() { throw null; }
+    }
+    public enum TarArchiveEntryType
+    {
+        OldNormal = '\0',
+        Link = '1',
+        SymbolicLink = '2',
+        Character = '3',
+        Block = '4',
+        Directory = '5',
+        Fifo = '6',
+        Contiguous = '7',
+    }
+    public enum TarArchiveMode
+    {
+        Read = 0,
+    }
+    public enum TarFormat
+    {
+        V7,
+    }
+    public class TarOptions
+    {
+        public System.IO.Compression.TarArchiveMode Mode { get { throw null; } set { } }
+        public TarOptions() { }
+    }
     public partial class ZipArchive : System.IDisposable
     {
         public ZipArchive(System.IO.Stream stream) { }
