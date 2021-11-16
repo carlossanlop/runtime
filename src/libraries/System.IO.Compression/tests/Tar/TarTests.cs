@@ -1,9 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
-using System.Text;
-using System.Runtime.InteropServices;
+using System.IO.Enumeration;
+using System.Linq;
 using Xunit;
 
 namespace System.IO.Compression.Tests
@@ -41,7 +40,6 @@ namespace System.IO.Compression.Tests
         [InlineData("foldersymlink_folder_subfolder_file")]
         public void Read_Uncompressed_V7_Links_ManuallyCreated(string testCaseName)
         {
-            //Diagnostics.Debugger.Launch();
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
 
             VerifyTarFileContents(
@@ -88,6 +86,88 @@ namespace System.IO.Compression.Tests
             VerifyTarFileContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
+                tmpDir.Path);
+        }
+
+        #endregion
+
+        #region Ustar Uncompressed
+
+        [Theory]
+        [InlineData("file")]
+        [InlineData("folder_file")]
+        [InlineData("folder_subfolder_file")]
+        public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.Uncompressed,
+                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
+                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [InlineData("file_hardlink")]
+        [InlineData("file_symlink")]
+        [InlineData("foldersymlink_folder_subfolder_file")]
+        public void Read_Uncompressed_Ustar_Links(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.Uncompressed,
+                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
+                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+
+        // Workaround for 'Read_Uncompressed_Ustar_Links'
+        [Theory]
+        [InlineData("file_hardlink")]
+        [InlineData("file_symlink")]
+        [InlineData("foldersymlink_folder_subfolder_file")]
+        public void Read_Uncompressed_Ustar_Links_ManuallyCreated(string testCaseName)
+        {
+            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+
+            VerifyTarFileContents(
+                CompressionMethod.Uncompressed,
+                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
+                tmpDir.Path);
+        }
+
+        #endregion
+
+        #region Ustar GZip
+
+        [Theory]
+        [InlineData("file")]
+        [InlineData("folder_file")]
+        [InlineData("folder_subfolder_file")]
+        public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.GZip,
+                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
+                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [InlineData("file_hardlink")]
+        [InlineData("file_symlink")]
+        [InlineData("foldersymlink_folder_subfolder_file")]
+        public void Read_Gzip_Ustar_Links(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.GZip,
+                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
+                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+
+        // Workaround for 'Read_Gzip_Ustar_Links'
+        [Theory]
+        [InlineData("file_hardlink")]
+        [InlineData("file_symlink")]
+        [InlineData("foldersymlink_folder_subfolder_file")]
+        public void Read_Gzip_Ustar_Links_ManuallyCreated(string testCaseName)
+        {
+            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+
+            VerifyTarFileContents(
+                CompressionMethod.GZip,
+                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
                 tmpDir.Path);
         }
 
@@ -213,14 +293,19 @@ namespace System.IO.Compression.Tests
             TarOptions options = new() { Mode = TarArchiveMode.Read };
             using var archive = new TarArchive(tarStream, options);
             TarArchiveEntry? entry = null;
+
+            int entryCount = 0;
             while ((entry = archive.GetNextEntry()) != null)
             {
+                entryCount++;
                 string fullPath = Path.Join(expectedFilesDir, entry.Name);
                 switch (entry.TypeFlag)
                 {
                     case TarArchiveEntryType.OldNormal:
+                    case TarArchiveEntryType.Normal:
                     case TarArchiveEntryType.Link:
                         Assert.True(File.Exists(fullPath), $"Normal file exists: {entry.Name}");
+                        // TODO: Hardlink should have the link to the real file in Prefix, check it
                         break;
                     case TarArchiveEntryType.Directory:
                         Assert.True(Directory.Exists(fullPath), $"Directory exists: {entry.Name}");
@@ -242,6 +327,22 @@ namespace System.IO.Compression.Tests
                         throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
                 }
             }
+            Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), entryCount);
+        }
+
+        private int GetExpectedEntriesCount(string expectedFilesDir)
+        {
+            var entries = new FileSystemEnumerable<string>(
+                directory: expectedFilesDir,
+                transform: (ref FileSystemEntry entry) => entry.ToFullPath(),
+                options: new EnumerationOptions() { RecurseSubdirectories = true })
+            {
+                // Avoid recursing symlinks to directories, otherwise entries show up twice in the
+                // enumeration (once as the original file, and once as the file inside the symlinked directory)
+                ShouldRecursePredicate = (ref FileSystemEntry entry) =>
+                    entry.IsDirectory && !entry.Attributes.HasFlag(FileAttributes.ReparsePoint)
+            };
+            return entries.Count();
         }
 
         #endregion
