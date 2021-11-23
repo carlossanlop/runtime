@@ -18,12 +18,13 @@ namespace System.IO.Compression
         internal byte[] _sizeBytes;
         internal byte[] _mTimeBytes;
         internal byte[] _checksumBytes;
-        internal byte _typeFlagBytes;
+        internal byte[] _typeFlagBytes;
         internal byte[] _linkNameBytes;
 
         // POSIX and GNU shared attributes
 
         internal byte[] _magicBytes;
+
         internal byte[] _versionBytes;
         internal byte[] _uNameBytes;
         internal byte[] _gNameBytes;
@@ -35,70 +36,130 @@ namespace System.IO.Compression
 
         internal byte[] _prefixBytes;
 
-        internal void ReadCommonAttributeBytes(BinaryReader reader)
+        internal bool TryReadCommonAttributeBytes(Stream archiveStream)
         {
-            _nameBytes = reader.ReadBytes(FieldSizes.Name);
-            _modeBytes = reader.ReadBytes(FieldSizes.Mode);
-            _uidBytes = reader.ReadBytes(FieldSizes.Uid);
-            _gidBytes = reader.ReadBytes(FieldSizes.Gid);
-            _sizeBytes = reader.ReadBytes(FieldSizes.Size);
-            _mTimeBytes = reader.ReadBytes(FieldSizes.MTime);
-            _checksumBytes = reader.ReadBytes(FieldSizes.CheckSum);
-            _typeFlagBytes = reader.ReadByte();
-            _linkNameBytes = reader.ReadBytes(FieldSizes.LinkName);
+            _nameBytes = new byte[FieldLengths.Name];
+            if (archiveStream.Read(_nameBytes) != FieldLengths.Name)
+            {
+                return false;
+            }
+            _modeBytes = new byte[FieldLengths.Mode];
+            if (archiveStream.Read(_modeBytes) != FieldLengths.Mode)
+            {
+                return false;
+            }
+            _uidBytes = new byte[FieldLengths.Uid];
+            if (archiveStream.Read(_uidBytes) != FieldLengths.Uid)
+            {
+                return false;
+            }
+            _gidBytes = new byte[FieldLengths.Gid];
+            if (archiveStream.Read(_gidBytes) != FieldLengths.Gid)
+            {
+                return false;
+            }
+            _sizeBytes = new byte[FieldLengths.Size];
+            if (archiveStream.Read(_sizeBytes) != FieldLengths.Size)
+            {
+                return false;
+            }
+            _mTimeBytes = new byte[FieldLengths.MTime];
+            if (archiveStream.Read(_mTimeBytes) != FieldLengths.MTime)
+            {
+                return false;
+            }
+            _checksumBytes = new byte[FieldLengths.Checksum];
+            if (archiveStream.Read(_checksumBytes) != FieldLengths.Checksum)
+            {
+                return false;
+            }
+            _typeFlagBytes = new byte[FieldLengths.TypeFlag];
+            if (archiveStream.Read(_typeFlagBytes) != FieldLengths.TypeFlag)
+            {
+                return false;
+            }
+            _linkNameBytes = new byte[FieldLengths.LinkName];
+            if (archiveStream.Read(_linkNameBytes) != FieldLengths.LinkName)
+            {
+                return false;
+            }
+
+            return true;
         }
 
-        internal void ReadMagicBytes(BinaryReader reader)
+        internal bool TryReadMagicBytes(Stream archiveStream)
         {
-            _magicBytes = reader.ReadBytes(FieldSizes.Magic);
+            _magicBytes = new byte[FieldLengths.Magic];
+            return archiveStream.Read(_magicBytes.AsSpan()) == FieldLengths.Magic;
         }
 
-        internal void ReadPosixAndGnuSharedAttributeBytes(BinaryReader reader)
+        internal bool TryReadPosixAndGnuSharedAttributeBytes(Stream archiveStream)
         {
-            _versionBytes = reader.ReadBytes(FieldSizes.Version);
-            _uNameBytes = reader.ReadBytes(FieldSizes.UName);
-            _gNameBytes = reader.ReadBytes(FieldSizes.GName);
-            _devMajorBytes = reader.ReadBytes(FieldSizes.DevMajor);
-            _devMinorBytes = reader.ReadBytes(FieldSizes.DevMinor);
+            _versionBytes = new byte[FieldLengths.Version];
+            if (archiveStream.Read(_versionBytes) != FieldLengths.Version)
+            {
+                return false;
+            }
+            _uNameBytes = new byte[FieldLengths.UName];
+            if (archiveStream.Read(_uNameBytes) != FieldLengths.UName)
+            {
+                return false;
+            }
+            _gNameBytes = new byte[FieldLengths.GName];
+            if (archiveStream.Read(_gNameBytes) != FieldLengths.GName)
+            {
+                return false;
+            }
+            _devMajorBytes = new byte[FieldLengths.DevMajor];
+            if (archiveStream.Read(_devMajorBytes) != FieldLengths.DevMajor)
+            {
+                return false;
+            }
+            _devMinorBytes = new byte[FieldLengths.DevMinor];
+            if (archiveStream.Read(_devMinorBytes) != FieldLengths.DevMinor)
+            {
+                return false;
+            }
+
+            return true;
         }
 
-        internal void ReadPosixPrefixAttributeBytes(BinaryReader reader)
+        internal bool TryReadPosixPrefixAttributeBytes(Stream archiveStream)
         {
-            _prefixBytes = reader.ReadBytes(FieldSizes.Prefix);
+            _prefixBytes = new byte[FieldLengths.Prefix];
+            return archiveStream.Read(_prefixBytes.AsSpan()) == FieldLengths.Prefix;
         }
 
-        internal void ReadV7PaddingBytes(BinaryReader reader)
-        {
+        internal bool TryReadV7PaddingBytes(Stream archiveStream) =>
             // Because we tried to detect the magic in case the header was ustar or above,
             // We already advanced those bytes, so we need to substract them from the expected
             // V7 padding length.
-            ReadPaddingBytes(reader, FieldSizes.V7Padding - FieldSizes.Magic);
+            TryReadPaddingBytes(archiveStream, FieldLengths.V7Padding - FieldLengths.Magic);
+
+        internal bool TryReadPosixPaddingBytes(Stream archiveStream) =>
+            TryReadPaddingBytes(archiveStream, FieldLengths.PosixPadding);
+
+        private bool TryReadPaddingBytes(Stream archiveStream, ushort length)
+        {
+            _paddingBytes = new byte[length];
+            return archiveStream.Read(_paddingBytes.AsSpan()) == length;
         }
 
-        internal void ReadPosixPaddingBytes(BinaryReader reader)
+        internal struct FieldLengths
         {
-            ReadPaddingBytes(reader, FieldSizes.PosixPadding);
-        }
-
-        private void ReadPaddingBytes(BinaryReader reader, ushort length)
-        {
-            _paddingBytes = reader.ReadBytes(length);
-        }
-
-        internal struct FieldSizes
-        {
-            private const ushort PathLength = 100;
+            private const ushort Path = 100;
 
             // Common attributes
 
-            internal const ushort Name = PathLength;
+            internal const ushort Name = Path;
             internal const ushort Mode = 8;
             internal const ushort Uid = 8;
             internal const ushort Gid = 8;
             internal const ushort Size = 12;
             internal const ushort MTime = 12;
-            internal const ushort CheckSum = 8;
-            internal const ushort LinkName = PathLength;
+            internal const ushort Checksum = 8;
+            internal const ushort TypeFlag = 1;
+            internal const ushort LinkName = Path;
 
             // POSIX and GNU shared attributes
 

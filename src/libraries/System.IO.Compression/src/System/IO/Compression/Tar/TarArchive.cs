@@ -13,9 +13,8 @@ namespace System.IO.Compression
 
         internal Stream _archiveStream;
         private TarOptions _options;
-        private long _currentHeaderBegin;
-        private BinaryReader _reader;
         private bool _isDisposed;
+        private long _lastDataStartPosition;
 
         private Dictionary<int, TarArchiveEntry>? _entries;
 
@@ -38,34 +37,20 @@ namespace System.IO.Compression
             }
 
             _archiveStream = stream;
-            _currentHeaderBegin = 0;
-            _reader = new BinaryReader(_archiveStream);
+            _lastDataStartPosition = 0;
         }
 
         public TarArchiveEntry? GetNextEntry()
         {
             ThrowIfDisposed();
 
-            if (_reader.PeekChar() == -1)
-            {
-                return null;
-            }
-
             TarArchiveEntry? entry = null;
 
-            try
+            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, out TarHeader header))
             {
-
-                TarHeader header = TarHeader.GetNextHeader(_reader);
-                if (header.Checksum != 0)
-                {
-                    entry = new TarArchiveEntry(this, header);
-                    AddEntry(entry);
-                }
-            }
-            finally
-            {
-                _currentHeaderBegin = _archiveStream.Length;
+                entry = new TarArchiveEntry(this, header);
+                AddEntry(entry);
+                _lastDataStartPosition = header.DataStartPosition;
             }
 
             return entry;
@@ -83,7 +68,6 @@ namespace System.IO.Compression
             {
                 if (disposing)
                 {
-                    _reader.Dispose();
                     _archiveStream.Dispose();
                 }
 

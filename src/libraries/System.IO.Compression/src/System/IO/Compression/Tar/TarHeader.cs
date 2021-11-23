@@ -39,30 +39,38 @@ namespace System.IO.Compression
         internal string Prefix { get; private set; }
 
 
-        internal long PaddingAfterData { get; private set; }
         internal long DataStartPosition { get; private set; }
 
-        internal static TarHeader GetNextHeader(BinaryReader reader)
+        internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, out TarHeader header)
         {
-            TarHeader header = default;
-            header.ReadAttributes(reader);
-            return header;
+            header = default;
+            return header.TryReadAttributes(archiveStream, lastDataStartPosition);
         }
 
-        private void ReadAttributes(BinaryReader reader)
+        private bool TryReadAttributes(Stream archiveStream, long lastDataStartPosition)
         {
             _rawHeader = default;
-            ReadCommonAttributes(reader);
-            ReadMagicAttribute(reader);
+            if (!TryReadCommonAttributes(archiveStream))
+            {
+                return false;
+            }
+
+            ReadMagicAttribute(archiveStream);
 
             if (Format == TarFormat.V7)
             {
                 // Space between end of header and start of file data.
-                _rawHeader.ReadV7PaddingBytes(reader);
+                if (!_rawHeader.TryReadV7PaddingBytes(archiveStream))
+                {
+                    return false;
+                }
             }
             else
             {
-                ReadPosixAndGnuSharedAttributes(reader);
+                if (!TryReadPosixAndGnuSharedAttributes(archiveStream))
+                {
+                    return false;
+                }
 
                 if (Format == TarFormat.Ustar)
                 {
@@ -71,22 +79,37 @@ namespace System.IO.Compression
                     //      then it can be split by any  '/' characters, with the first portion being stored here.
                     //      So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
                     //  - Null terminated unless the entire field is set.
-                    _rawHeader.ReadPosixPrefixAttributeBytes(reader);
+                    if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
+                    {
+                        return false;
+                    }
 
                     // Space between end of header and start of file data.
-                    _rawHeader.ReadPosixPaddingBytes(reader);
+                    if (!_rawHeader.TryReadPosixPaddingBytes(archiveStream))
+                    {
+                        return false;
+                    }
                     // Now try to determine if it's pax or should stay ustar
                 }
             }
 
-            PaddingAfterData = SkipFileDataBlock(reader);
-            DataStartPosition = reader.BaseStream.Position + 1;
+            long paddingAfterData = SkipFileDataBlock(archiveStream);
+
+            DataStartPosition = Format switch
+            {
+                TarFormat.V7 or TarFormat.Ustar => lastDataStartPosition + 512 + Size + paddingAfterData,
+                _ => throw new NotSupportedException(),
+            };
+            return true;
         }
 
         // Fields shared by all tar formats
-        private void ReadCommonAttributes(BinaryReader reader)
+        private bool TryReadCommonAttributes(Stream archiveStream)
         {
-            _rawHeader.ReadCommonAttributeBytes(reader);
+            if (!_rawHeader.TryReadCommonAttributeBytes(archiveStream))
+            {
+                return false;
+            }
 
             // The filesystem entry path.
             // v7:
@@ -94,7 +117,7 @@ namespace System.IO.Compression
             // ustar:
             //  - Does not expect trailing separator for directory (that's what typeflag is for), but should add it for backwards-compat.
             //  - Null terminated unless the entire field is filled.
-            Name = GetTrimmedAsciiString(_rawHeader._nameBytes.AsSpan());
+            Name = GetTrimmedAsciiString(_rawHeader._nameBytes);
 
             // File mode, as an octal number in Encoding.ASCII.
             // v7:
@@ -145,6 +168,12 @@ namespace System.IO.Compression
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
             Checksum = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._checksumBytes);
 
+            // Zero checksum means this is a null block
+            if (Checksum == 0)
+            {
+                return false;
+            }
+
             // The filesystem entry type. v7 calls this field 'linkflag'.
             // - v7 defines:
             //     \0: Normal
@@ -158,23 +187,28 @@ namespace System.IO.Compression
             // ustar defines the same as v7, plus:
             //      0: Normal (ustar version)
             //  other: Unrecognized values that are treated as Normal.
-            TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagBytes;
+            TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagBytes[0];
 
             // If the file is a link, contains the name of the target.
             // v7:
             //  - Null terminated.
             // ustar:
             //  - Null terminated unless the entire field is filled.
-            LinkName = GetTrimmedAsciiString(_rawHeader._linkNameBytes.AsSpan());
+            LinkName = GetTrimmedAsciiString(_rawHeader._linkNameBytes);
 
             // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
             Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+
+            return true;
         }
 
         // Field only found in ustar or above
-        private void ReadMagicAttribute(BinaryReader reader)
+        private void ReadMagicAttribute(Stream archiveStream)
         {
-            _rawHeader.ReadMagicBytes(reader);
+            if (!_rawHeader.TryReadMagicBytes(archiveStream))
+            {
+                return;
+            }
 
             // If the magic field is set, the archive is newer than v7.
             // ustar:
@@ -195,9 +229,12 @@ namespace System.IO.Compression
             }
         }
 
-        private void ReadPosixAndGnuSharedAttributes(BinaryReader reader)
+        private bool TryReadPosixAndGnuSharedAttributes(Stream archiveStream)
         {
-            _rawHeader.ReadPosixAndGnuSharedAttributeBytes(reader);
+            if (!_rawHeader.TryReadPosixAndGnuSharedAttributeBytes(archiveStream))
+            {
+                return false;
+            }
 
             // ASCII string field that helps determine if the format is ustar or newer.
             // ustar:
@@ -234,8 +271,10 @@ namespace System.IO.Compression
             if (_rawHeader._versionBytes[0] == 32 && // space
                 _rawHeader._versionBytes[1] == 0) // null
             {
-                throw new NotImplementedException("GNU");
+                return false;
             }
+
+            return true;
         }
 
         // Returns the ASCII string contained in the specified buffer of bytes,
@@ -256,9 +295,9 @@ namespace System.IO.Compression
         // Receives a byte array that represents an ASCII string containing a number in octal base.
         // Converts the byte array to an octal base number, then transforms it to decimal base,
         // and returns that value.
-        private int GetTenBaseNumberFromOctalAsciiChars(byte[] buffer)
+        private int GetTenBaseNumberFromOctalAsciiChars(Span<byte> buffer)
         {
-            string str = GetTrimmedAsciiString(buffer.AsSpan());
+            string str = GetTrimmedAsciiString(buffer);
             return string.IsNullOrEmpty(str) ? 0 : Convert.ToInt32(str, fromBase: 8);
         }
 
@@ -271,33 +310,45 @@ namespace System.IO.Compression
 
         // Move the BinaryReader pointer to the first byte of the next file header.
         // Returns the total number of null characters found after the file contents.
-        private long SkipFileDataBlock(BinaryReader reader)
+        private long SkipFileDataBlock(Stream archiveStream)
         {
             long bytesToSkip = Size;
+            byte[]? buffer = null;
             while (bytesToSkip > 0)
             {
                 if (bytesToSkip > int.MaxValue)
                 {
-                    reader.ReadBytes(int.MaxValue);
+                    if (buffer == null)
+                    {
+                        buffer = new byte[int.MaxValue];
+                    }
+                    if (archiveStream.Read(buffer) != int.MaxValue)
+                    {
+                        return Size - bytesToSkip;
+                    }
                     bytesToSkip -= int.MaxValue;
                 }
                 else
                 {
-                    reader.ReadBytes((int)bytesToSkip);
+                    int totalRead = archiveStream.Read(new byte[bytesToSkip]);
+                    if (totalRead != bytesToSkip)
+                    {
+                        return totalRead;
+                    }
                     break;
                 }
             }
 
             // After the file contents, there may be zero or more null characters,
             // which exist to ensure the data is aligned to the record size.
-            long afterDataPaddingLength = 0;
-            while (reader.PeekChar() == 0)
+            long ceilingMultipleOfRecordSize= ((TarArchive.RecordSize - 1) | (Size - 1)) + 1;
+            int bufferLength = (int)(ceilingMultipleOfRecordSize - Size);
+            if (bufferLength > 0)
             {
-                reader.ReadByte();
-                afterDataPaddingLength++;
+                buffer = new byte[bufferLength];
+                return archiveStream.Read(buffer);
             }
-
-            return afterDataPaddingLength;
+            return 0;
         }
     }
 }
