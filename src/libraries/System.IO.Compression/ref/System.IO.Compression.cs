@@ -129,6 +129,7 @@ namespace System.IO.Compression
     public class TarOptions
     {
         public System.IO.Compression.TarArchiveMode Mode { get { throw null; } set { } }
+        public bool LeaveOpen { get { throw null; } set { } }
         public TarOptions() { }
     }
     public partial class ZipArchive : System.IDisposable
