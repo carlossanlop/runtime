@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace System.IO.Compression
 {
@@ -12,19 +10,23 @@ namespace System.IO.Compression
         internal const short RecordSize = 512;
 
         internal Stream _archiveStream;
-        private TarOptions _options;
         private bool _isDisposed;
         private long _lastDataStartPosition;
 
         private Dictionary<int, TarArchiveEntry>? _entries;
 
-        public TarOptions Options => _options;
+        public TarOptions Options { get; }
 
         public TarArchive(Stream stream, TarOptions? options)
         {
-            _options = options ?? new TarOptions();
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
 
-            switch (_options.Mode)
+            Options = options ?? new TarOptions();
+
+            switch (Options.Mode)
             {
                 case TarArchiveMode.Read:
                     if (!stream.CanRead)
@@ -33,7 +35,7 @@ namespace System.IO.Compression
                     }
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("Unsupported tar archive mode.", innerException: null);
+                    throw new ArgumentOutOfRangeException("TarOptions.Mode out of range.", innerException: null);
             }
 
             _archiveStream = stream;
@@ -66,7 +68,7 @@ namespace System.IO.Compression
         {
             if (!_isDisposed)
             {
-                if (disposing)
+                if (disposing && !Options.LeaveOpen)
                 {
                     _archiveStream.Dispose();
                 }
