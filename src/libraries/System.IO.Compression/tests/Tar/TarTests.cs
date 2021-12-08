@@ -9,6 +9,60 @@ namespace System.IO.Compression.Tests
 {
     public partial class TarTests : FileCleanupTestBase
     {
+        #region Basic validation
+
+        [Fact]
+        public void Null_Stream()
+            => Assert.Throws<ArgumentNullException>(() => new TarArchive(stream: null, new TarOptions()));
+
+        [Fact]
+        public void Null_Options()
+        {
+            var archive = new TarArchive(new MemoryStream(), options: null);
+            Assert.NotNull(archive.Options);
+            Assert.False(archive.Options.LeaveOpen);
+            Assert.Equal(TarArchiveMode.Read, archive.Options.Mode);
+        }
+
+        [Theory]
+        [InlineData((TarArchiveMode)int.MinValue)]
+        [InlineData((TarArchiveMode)(-1))]
+        [InlineData((TarArchiveMode)int.MaxValue)]
+        public void Invalid_TarArchiveMode(TarArchiveMode mode)
+            => Assert.Throws<ArgumentOutOfRangeException>(() => new TarArchive(new MemoryStream(), new TarOptions() { Mode = mode }));
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Verify_LeaveOpen(bool leaveOpen)
+        {
+            var stream = new MemoryStream();
+            using (var archive = new TarArchive(stream, new TarOptions() { LeaveOpen = leaveOpen })) { }
+
+            if (leaveOpen)
+            {
+                stream.WriteByte(0);
+                stream.Dispose();
+            }
+            else
+            {
+                Assert.Throws<ObjectDisposedException>(() => stream.WriteByte(0));
+            }
+        }
+
+        [Fact]
+        public void Verify_TarArchive_Disposed()
+        {
+            var archive = new TarArchive(new MemoryStream(), new TarOptions() { LeaveOpen = false });
+
+            archive.Dispose();
+            archive.Dispose(); // A second dispose call should be a no-op
+
+            Assert.Throws<ObjectDisposedException>(() => archive.GetNextEntry());
+        }
+
+        #endregion
+
         #region V7 Uncompressed
 
         [Theory]

@@ -3,12 +3,14 @@
     <TargetFrameworks>$(NetCoreAppCurrent)-windows;$(NetCoreAppCurrent)-Unix;$(NetCoreAppCurrent)-Browser</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <StringResourcesPath>$(LibrariesProjectRoot)/Common/tests/Resources/Strings.resx</StringResourcesPath>
+    <EnableDllImportGenerator>true</EnableDllImportGenerator>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="CompressionStreamUnitTests.ZLib.cs" />
     <Compile Include="CompressionStreamUnitTests.Deflate.cs" />
     <Compile Include="CompressionStreamUnitTests.Gzip.cs" />
     <Compile Include="Tar\TarTests.cs" />
+    <Compile Include="Tar\TarTests_ManuallyCreatedAssets.cs" />
     <Compile Include="Utilities\StripHeaderAndFooter.cs" />
     <Compile Include="Utilities\WrappedStream.cs" />
     <Compile Include="XunitAssemblyAttributes.cs" />
@@ -44,14 +46,12 @@
     <Compile Include="$(CommonPath)System\IO\Win32Marshal.cs" Link="Common\System\IO\Win32Marshal.cs" />
     <Compile Include="$(CommonPath)System\Text\ValueStringBuilder.cs" Link="Common\System\Text\ValueStringBuilder.cs" />
   </ItemGroup>
-  <!-- TODO: Figure out why DllImportGenerator is causing issues
   <ItemGroup Condition="'$(TargetsWindows)' != 'true'">
-    <Compile Include="Tar\TarTests.Unix.cs" />
+    <Compile Include="Tar\TarTests_ManuallyCreatedAssets.Unix.cs" />
     <Compile Include="$(CommonPath)Interop\Unix\Interop.Errors.cs" Link="Common\Interop\Unix\Interop.Errors.cs" />
     <Compile Include="$(CommonPath)Interop\Unix\Interop.Libraries.cs" Link="Common\Interop\Unix\Interop.Libraries.cs" />
     <Compile Include="$(CommonPath)Interop\Unix\System.Native\Interop.Link.cs" Link="Common\Interop\Unix\System.Native\Interop.Link.cs" />
   </ItemGroup>
-  -->
   <ItemGroup>
     <ProjectReference Include="$(CommonTestPath)StreamConformanceTests\StreamConformanceTests.csproj" />
   </ItemGroup>
