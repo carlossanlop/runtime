@@ -117,7 +117,7 @@ namespace System.IO.Compression
             // ustar:
             //  - Does not expect trailing separator for directory (that's what typeflag is for), but should add it for backwards-compat.
             //  - Null terminated unless the entire field is filled.
-            Name = GetTrimmedAsciiString(_rawHeader._nameBytes);
+            Name = GetTrimmedUtf8String(_rawHeader._nameBytes);
 
             // File mode, as an octal number in Encoding.ASCII.
             // v7:
@@ -194,7 +194,7 @@ namespace System.IO.Compression
             //  - Null terminated.
             // ustar:
             //  - Null terminated unless the entire field is filled.
-            LinkName = GetTrimmedAsciiString(_rawHeader._linkNameBytes);
+            LinkName = GetTrimmedUtf8String(_rawHeader._linkNameBytes);
 
             // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
             Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
@@ -279,7 +279,15 @@ namespace System.IO.Compression
 
         // Returns the ASCII string contained in the specified buffer of bytes,
         // removing the trailing null or space chars.
-        private string GetTrimmedAsciiString(ReadOnlySpan<byte> buffer)
+        private string GetTrimmedAsciiString(ReadOnlySpan<byte> buffer) => GetTrimmedString(buffer, Encoding.ASCII);
+
+        // Returns the UTF8 string contained in the specified buffer of bytes,
+        // removing the trailing null or space chars.
+        private string GetTrimmedUtf8String(ReadOnlySpan<byte> buffer) => GetTrimmedString(buffer, Encoding.UTF8);
+
+        // Returns the string contained in the specified buffer of bytes,
+        // in the specified encoding, removing the trailing null or space chars.
+        private string GetTrimmedString(ReadOnlySpan<byte> buffer, Encoding encoding)
         {
             int trimmedLength = buffer.Length;
             while (trimmedLength > 0 && IsByteNullOrSpace(buffer[trimmedLength - 1]))
@@ -287,7 +295,7 @@ namespace System.IO.Compression
                 trimmedLength--;
             }
 
-            return trimmedLength == 0 ? string.Empty : Encoding.ASCII.GetString(buffer.Slice(0, trimmedLength));
+            return trimmedLength == 0 ? string.Empty : encoding.GetString(buffer.Slice(0, trimmedLength));
 
             static bool IsByteNullOrSpace(byte c) => c is 0 or 32;
         }
