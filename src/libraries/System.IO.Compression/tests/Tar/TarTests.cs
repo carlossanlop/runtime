@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.IO.Enumeration;
 using System.Linq;
 using Xunit;
@@ -66,9 +67,7 @@ namespace System.IO.Compression.Tests
         #region V7 Uncompressed
 
         [Theory]
-        [InlineData("file")]
-        [InlineData("folder_file")]
-        [InlineData("folder_subfolder_file")]
+        [MemberData(nameof(Normal_FilesAndFolders_Data))]
         public void Read_Uncompressed_V7_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
@@ -78,9 +77,7 @@ namespace System.IO.Compression.Tests
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_V7_Links(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
@@ -92,9 +89,7 @@ namespace System.IO.Compression.Tests
         #region V7 GZip
 
         [Theory]
-        [InlineData("file")]
-        [InlineData("folder_file")]
-        [InlineData("folder_subfolder_file")]
+        [MemberData(nameof(Normal_FilesAndFolders_Data))]
         public void Read_Gzip_V7_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
@@ -104,9 +99,7 @@ namespace System.IO.Compression.Tests
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Gzip_V7_Links(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
@@ -118,9 +111,7 @@ namespace System.IO.Compression.Tests
         #region Ustar Uncompressed
 
         [Theory]
-        [InlineData("file")]
-        [InlineData("folder_file")]
-        [InlineData("folder_subfolder_file")]
+        [MemberData(nameof(Normal_FilesAndFolders_Data))]
         public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
@@ -130,9 +121,7 @@ namespace System.IO.Compression.Tests
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_Ustar_Links(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
@@ -144,9 +133,7 @@ namespace System.IO.Compression.Tests
         #region Ustar GZip
 
         [Theory]
-        [InlineData("file")]
-        [InlineData("folder_file")]
-        [InlineData("folder_subfolder_file")]
+        [MemberData(nameof(Normal_FilesAndFolders_Data))]
         public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
@@ -156,9 +143,7 @@ namespace System.IO.Compression.Tests
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Gzip_Ustar_Links(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
@@ -168,6 +153,25 @@ namespace System.IO.Compression.Tests
         #endregion
 
         #region Helpers
+
+        public static IEnumerable<object[]> Normal_FilesAndFolders_Data()
+        {
+            yield return new object[] { "file" };
+            yield return new object[] { "folder_file" };
+            yield return new object[] { "folder_file_utf8" };
+            yield return new object[] { "folder_subfolder_file" };
+            // TODO: Test separately when gnu/oldgnu are implemented.
+            // Only gnu and oldgnu fully support a very long path.
+            // The rest of the formats are unable to archive all the folders and the file in the long path correctly
+            // yield return new object[] { "longpath" };
+        }
+
+        public static IEnumerable<object[]> Links_Data()
+        {
+            yield return new object[] { "file_hardlink" };
+            yield return new object[] { "file_symlink" };
+            yield return new object[] { "foldersymlink_folder_subfolder_file" };
+        }
 
         protected enum CompressionMethod
         {
