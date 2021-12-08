@@ -12,7 +12,7 @@ namespace System.IO.Compression
         private TarHeader _header;
         internal MemoryStream? _stream;
 
-        public string Name => _header.Name;
+        public int Checksum => _header.Checksum;
         public long Length
         {
             get
@@ -24,8 +24,8 @@ namespace System.IO.Compression
                 return _header.Size;
             }
         }
-        public int Checksum => _header.Checksum;
         public string LinkName => _header.LinkName;
+        public string Name => _header.Name;
         public TarArchiveEntryType TypeFlag { get => _header.TypeFlag; }
 
         internal long TotalEntryLength
