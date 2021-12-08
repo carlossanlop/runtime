@@ -13,6 +13,8 @@ namespace System.IO.Compression
         internal MemoryStream? _stream;
 
         public int Checksum => _header.Checksum;
+        public int Gid => _header.Gid;
+        public string GName => _header.GName;
         public long Length
         {
             get
@@ -27,6 +29,8 @@ namespace System.IO.Compression
         public string LinkName => _header.LinkName;
         public string Name => _header.Name;
         public TarArchiveEntryType TypeFlag { get => _header.TypeFlag; }
+        public int Uid => _header.Uid;
+        public string UName => _header.UName;
 
         internal long TotalEntryLength
         {
