@@ -224,42 +224,54 @@ namespace System.IO.Compression.Tests
         {
             TarOptions options = new() { Mode = TarArchiveMode.Read };
             using var archive = new TarArchive(tarStream, options);
-            TarArchiveEntry? entry = null;
 
-            int entryCount = 0;
+            var extractedEntries = new List<TarArchiveEntry>();
+            TarArchiveEntry? entry = null;
             while ((entry = archive.GetNextEntry()) != null)
             {
-                entryCount++;
-                string fullPath = Path.Join(expectedFilesDir, entry.Name);
-                switch (entry.TypeFlag)
+                extractedEntries.Add(entry);
+            }
+
+            foreach (TarArchiveEntry extractedEntry in extractedEntries)
+            {
+                string fullPath = Path.Join(expectedFilesDir, extractedEntry.Name);
+                string? linkFullPath = !string.IsNullOrEmpty(extractedEntry.LinkName) ? Path.Join(expectedFilesDir, extractedEntry.LinkName) : null;
+
+                switch (extractedEntry.TypeFlag)
                 {
                     case TarArchiveEntryType.OldNormal:
                     case TarArchiveEntryType.Normal:
+                        Assert.True(File.Exists(fullPath), $"File exists: {extractedEntry.Name}");
+                        break;
                     case TarArchiveEntryType.Link:
-                        Assert.True(File.Exists(fullPath), $"Normal file exists: {entry.Name}");
-                        // TODO: Hardlink should have the link to the real file in Prefix, check it
+                        Assert.True(File.Exists(fullPath), $"File hardlink exists: {extractedEntry.Name}");
+                        Assert.NotNull(extractedEntry.LinkName);
+                        Assert.NotEmpty(extractedEntry.LinkName);
+                        Assert.True(File.Exists(linkFullPath), $"File hardlink target exists: {extractedEntry.LinkName}");
                         break;
                     case TarArchiveEntryType.Directory:
-                        Assert.True(Directory.Exists(fullPath), $"Directory exists: {entry.Name}");
+                        Assert.True(Directory.Exists(fullPath), $"Directory exists: {extractedEntry.Name}");
                         break;
                     case TarArchiveEntryType.SymbolicLink:
                         var symLinkInfo = new FileInfo(fullPath);
                         Assert.True(symLinkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint), "Expected file has ReparsePoint flag");
                         if (symLinkInfo.Attributes.HasFlag(FileAttributes.Directory))
                         {
-                            Assert.True(Directory.Exists(fullPath), $"Symlink directory exists: {entry.Name}");
+                            Assert.True(Directory.Exists(fullPath), $"Directory symlink exists: {extractedEntry.Name}");
                         }
                         else
                         {
-                            Assert.True(File.Exists(fullPath), $"Symlink file exists: {entry.Name}");
+                            Assert.True(File.Exists(fullPath), $"File symlink exists: {extractedEntry.Name}");
                         }
-                        Assert.True(!string.IsNullOrWhiteSpace(entry.LinkName), "LinkName string is not null or whitespace");
+                        Assert.NotNull(extractedEntry.LinkName);
+                        Assert.NotEmpty(extractedEntry.LinkName);
+                        Assert.True(File.Exists(linkFullPath), $"File symlink target exists: {extractedEntry.LinkName}");
                         break;
                     default:
-                        throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
+                        throw new NotSupportedException($"Entry type: {extractedEntry.TypeFlag}");
                 }
             }
-            Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), entryCount);
+            Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), extractedEntries.Count());
         }
 
         private int GetExpectedEntriesCount(string expectedFilesDir)
