@@ -10,10 +10,12 @@ namespace System.IO.Compression
         internal const short RecordSize = 512;
 
         internal Stream _archiveStream;
+        private Dictionary<int, TarArchiveEntry>? _entries;
+        private TarFormat _format;
         private bool _isDisposed;
         private long _lastDataStartPosition;
 
-        private Dictionary<int, TarArchiveEntry>? _entries;
+        public TarFormat Format => _format;
 
         public TarOptions Options { get; }
 
@@ -40,6 +42,9 @@ namespace System.IO.Compression
 
             _archiveStream = stream;
             _lastDataStartPosition = 0;
+
+            // The real format is set after reading the first entry
+            _format = TarFormat.Unknown;
         }
 
         public TarArchiveEntry? GetNextEntry()
@@ -53,6 +58,15 @@ namespace System.IO.Compression
                 entry = new TarArchiveEntry(this, header);
                 AddEntry(entry);
                 _lastDataStartPosition = header.DataStartPosition;
+
+                if (_format == TarFormat.Unknown)
+                {
+                    _format = header.Format;
+                }
+                else if (header.Format != _format)
+                {
+                    throw new FormatException("The archive contains entries in different tar formats.");
+                }
             }
 
             return entry;

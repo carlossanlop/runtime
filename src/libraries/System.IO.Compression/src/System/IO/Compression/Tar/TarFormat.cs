@@ -5,6 +5,7 @@ namespace System.IO.Compression
 {
     public enum TarFormat
     {
+        Unknown,
         V7,
         Ustar,
     }

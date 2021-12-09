@@ -29,8 +29,8 @@ namespace System.IO.Compression
 
         internal string Magic { get; private set; }
         internal string Version { get; private set; }
-        internal string UName { get; private set; }
-        internal string GName { get; private set; }
+        internal string? UName { get; private set; }
+        internal string? GName { get; private set; }
         internal int DevMajor { get; private set; }
         internal int DevMinor { get; private set; }
 
@@ -44,6 +44,7 @@ namespace System.IO.Compression
         internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, out TarHeader header)
         {
             header = default;
+            header.Format = TarFormat.Unknown;
             return header.TryReadAttributes(archiveStream, lastDataStartPosition);
         }
 
