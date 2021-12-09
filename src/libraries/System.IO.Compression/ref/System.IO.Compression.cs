@@ -88,6 +88,7 @@ namespace System.IO.Compression
     }
     public class TarArchive : IDisposable
     {
+        public TarFormat Format { get { throw null; } }
         public System.IO.Compression.TarOptions Options { get { throw null; } }
         public TarArchive(System.IO.Stream stream, System.IO.Compression.TarOptions? options) { }
         public void Dispose() { }
@@ -99,13 +100,13 @@ namespace System.IO.Compression
         internal TarArchiveEntry() { }
         public int Checksum { get { throw null; } }
         public int Gid { get { throw null; } }
-        public string GName { get { throw null; } }
+        public string? GName { get { throw null; } }
         public long Length { get { throw null; } }
         public string LinkName { get { throw null; } }
         public string Name { get { throw null; } }
         public System.IO.Compression.TarArchiveEntryType TypeFlag { get { throw null; } }
         public int Uid { get { throw null; } }
-        public string UName { get { throw null; } }
+        public string? UName { get { throw null; } }
         public System.IO.Stream Open() { throw null; }
         public override string ToString() { throw null; }
     }
@@ -127,6 +128,7 @@ namespace System.IO.Compression
     }
     public enum TarFormat
     {
+        Unknown,
         V7,
         Ustar,
     }
