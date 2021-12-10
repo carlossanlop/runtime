@@ -105,6 +105,7 @@ namespace System.IO.Compression
         public string? GName { get { throw null; } }
         public long Length { get { throw null; } }
         public string LinkName { get { throw null; } }
+        public int Mode { get { throw null; } }
         public string Name { get { throw null; } }
         public System.IO.Compression.TarArchiveEntryType TypeFlag { get { throw null; } }
         public int Uid { get { throw null; } }
