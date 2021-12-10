@@ -10,6 +10,17 @@ namespace System.IO.Compression.Tests
 {
     public partial class TarTests : FileCleanupTestBase
     {
+        // These constants were used by the runtime-assets
+        // script to generate all the tar files.
+        private const string TestUser = "dotnet";
+        private const string TestGroup = "devdiv";
+        private const int TestUid = 7913;
+        private const int TestGid = 3579;
+        private const int CharDevMajor = 49;
+        private const int CharDevMinor = 86;
+        private const int BlockDevMajor = 71;
+        private const int BlockDevMinor = 53;
+
         #region Basic validation
 
         [Fact]
@@ -67,12 +78,12 @@ namespace System.IO.Compression.Tests
         #region V7 Uncompressed
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Data))]
+        [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Uncompressed_V7_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
@@ -82,19 +93,19 @@ namespace System.IO.Compression.Tests
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         #endregion
 
         #region V7 GZip
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Data))]
+        [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Gzip_V7_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
@@ -104,19 +115,19 @@ namespace System.IO.Compression.Tests
             VerifyTarFileContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         #endregion
 
         #region Ustar Uncompressed
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Data))]
+        [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
@@ -126,19 +137,19 @@ namespace System.IO.Compression.Tests
             VerifyTarFileContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         #endregion
 
         #region Ustar GZip
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Data))]
+        [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
             VerifyTarFileContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
@@ -148,22 +159,38 @@ namespace System.IO.Compression.Tests
             VerifyTarFileContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
-                Path.Join(Directory.GetCurrentDirectory(), GetTestCaseFolderName(testCaseName)));
+                GetTestCaseFolderPath(testCaseName));
 
         #endregion
 
         #region Helpers
 
-        public static IEnumerable<object[]> Normal_FilesAndFolders_Data()
+        public static IEnumerable<object[]> Normal_FilesAndFolders_V7_Data()
         {
             yield return new object[] { "file" };
             yield return new object[] { "folder_file" };
             yield return new object[] { "folder_file_utf8" };
             yield return new object[] { "folder_subfolder_file" };
-            // TODO: Test separately when gnu/oldgnu are implemented.
-            // Only gnu and oldgnu fully support a very long path.
-            // The rest of the formats are unable to archive all the folders and the file in the long path correctly
-            // yield return new object[] { "longpath" };
+        }
+
+        public static IEnumerable<object[]> Normal_FilesAndFolders_Ustar_Data()
+        {
+            foreach (var item in Normal_FilesAndFolders_V7_Data())
+            {
+                yield return item;
+            }
+            yield return new object[] { "devices" };
+            yield return new object[] { "longpath_splitable_under255" };
+        }
+
+        public static IEnumerable<object[]> Normal_FilesAndFolders_PaxAndGnu_Data()
+        {
+            foreach (var item in Normal_FilesAndFolders_Ustar_Data())
+            {
+                yield return item;
+            }
+            yield return new object[] { "longfilename_over100_under255" };
+            yield return new object[] { "longpath_over255" };
         }
 
         public static IEnumerable<object[]> Links_Data()
@@ -193,7 +220,8 @@ namespace System.IO.Compression.Tests
             return Path.Join(Directory.GetCurrentDirectory(), "TarTestData", compressionMethodFolder, formatFolder, testCaseName + fileExtension);
         }
 
-        private static string GetTestCaseFolderName(string testCaseName) => Path.Join("TarTestData", "unarchived", testCaseName);
+        private static string GetTestCaseFolderPath(string testCaseName) =>
+            Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
 
         // Opens the specified tar file as a stream, decompresses it if necessary, then verifies the contents.
         protected void VerifyTarFileContents(CompressionMethod compressionMethod, string tarFilePath, string expectedFilesDir)
@@ -232,46 +260,105 @@ namespace System.IO.Compression.Tests
                 extractedEntries.Add(entry);
             }
 
+            Assert.NotEqual(TarFormat.Unknown, archive.Format);
+
             foreach (TarArchiveEntry extractedEntry in extractedEntries)
             {
-                string fullPath = Path.Join(expectedFilesDir, extractedEntry.Name);
-                string? linkFullPath = !string.IsNullOrEmpty(extractedEntry.LinkName) ? Path.Join(expectedFilesDir, extractedEntry.LinkName) : null;
-
-                switch (extractedEntry.TypeFlag)
-                {
-                    case TarArchiveEntryType.OldNormal:
-                    case TarArchiveEntryType.Normal:
-                        Assert.True(File.Exists(fullPath), $"File exists: {extractedEntry.Name}");
-                        break;
-                    case TarArchiveEntryType.Link:
-                        Assert.True(File.Exists(fullPath), $"File hardlink exists: {extractedEntry.Name}");
-                        Assert.NotNull(extractedEntry.LinkName);
-                        Assert.NotEmpty(extractedEntry.LinkName);
-                        Assert.True(File.Exists(linkFullPath), $"File hardlink target exists: {extractedEntry.LinkName}");
-                        break;
-                    case TarArchiveEntryType.Directory:
-                        Assert.True(Directory.Exists(fullPath), $"Directory exists: {extractedEntry.Name}");
-                        break;
-                    case TarArchiveEntryType.SymbolicLink:
-                        var symLinkInfo = new FileInfo(fullPath);
-                        Assert.True(symLinkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint), "Expected file has ReparsePoint flag");
-                        if (symLinkInfo.Attributes.HasFlag(FileAttributes.Directory))
-                        {
-                            Assert.True(Directory.Exists(fullPath), $"Directory symlink exists: {extractedEntry.Name}");
-                        }
-                        else
-                        {
-                            Assert.True(File.Exists(fullPath), $"File symlink exists: {extractedEntry.Name}");
-                        }
-                        Assert.NotNull(extractedEntry.LinkName);
-                        Assert.NotEmpty(extractedEntry.LinkName);
-                        Assert.True(File.Exists(linkFullPath), $"File symlink target exists: {extractedEntry.LinkName}");
-                        break;
-                    default:
-                        throw new NotSupportedException($"Entry type: {extractedEntry.TypeFlag}");
-                }
+                VerifyEntry(extractedEntry, archive.Format, expectedFilesDir);
             }
-            Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), extractedEntries.Count());
+
+            // The 'devices' test case does not have any files in its 'unarchived' folder
+            //  because character and block device files cannot be merged to git.
+            if (Path.GetFileName(expectedFilesDir) != "devices")
+            {
+                Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), extractedEntries.Count());
+            }
+        }
+
+        private void VerifyEntry(TarArchiveEntry entry, TarFormat format, string expectedFilesDir)
+        {
+            string fullPath = Path.Join(expectedFilesDir, entry.Name);
+            string? linkFullPath = !string.IsNullOrEmpty(entry.LinkName) ? Path.Join(expectedFilesDir, entry.LinkName) : null;
+
+            VerifyEntryOwnership(format, entry);
+
+            switch (entry.TypeFlag)
+            {
+                case TarArchiveEntryType.OldNormal:
+                case TarArchiveEntryType.Normal:
+                    Assert.True(File.Exists(fullPath), $"File exists: {fullPath}");
+                    break;
+
+                case TarArchiveEntryType.Link:
+                    VerifyHardLinkEntry(entry, fullPath, linkFullPath);
+                    break;
+
+                case TarArchiveEntryType.Directory:
+                    Assert.True(Directory.Exists(fullPath), $"Directory exists: {fullPath}");
+                    break;
+
+                case TarArchiveEntryType.SymbolicLink:
+                    VerifySymbolicLinkEntry(entry, fullPath, linkFullPath);
+                    break;
+
+                case TarArchiveEntryType.Block:
+                    Assert.Equal(BlockDevMajor, entry.DevMajor);
+                    Assert.Equal(BlockDevMinor, entry.DevMinor);
+                    break;
+
+                case TarArchiveEntryType.Character:
+                    Assert.Equal(CharDevMajor, entry.DevMajor);
+                    Assert.Equal(CharDevMinor, entry.DevMinor);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
+            }
+        }
+
+        private void VerifyEntryOwnership(TarFormat format, TarArchiveEntry entry)
+        {
+            Assert.Equal(TestUid, entry.Uid);
+            Assert.Equal(TestGid, entry.Gid);
+
+            switch (format)
+            {
+                case TarFormat.V7:
+                    // Fields aren't supported in this format
+                    Assert.Null(entry.UName);
+                    Assert.Null(entry.GName);
+                    break;
+
+                case TarFormat.Ustar:
+                    Assert.Equal(TestUser, entry.UName);
+                    Assert.Equal(TestGroup, entry.GName);
+                    break;
+            }
+        }
+
+        private void VerifyHardLinkEntry(TarArchiveEntry entry, string fullPath, string linkFullPath)
+        {
+            Assert.True(File.Exists(fullPath), $"File hardlink exists: {fullPath}");
+            Assert.NotNull(entry.LinkName);
+            Assert.NotEmpty(entry.LinkName);
+            Assert.True(File.Exists(linkFullPath), $"File hardlink target exists: {fullPath}");
+        }
+
+        private void VerifySymbolicLinkEntry(TarArchiveEntry entry, string fullPath, string linkFullPath)
+        {
+            var symLinkInfo = new FileInfo(fullPath);
+            Assert.True(symLinkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint), "Expected file has ReparsePoint flag");
+            if (symLinkInfo.Attributes.HasFlag(FileAttributes.Directory))
+            {
+                Assert.True(Directory.Exists(fullPath), $"Directory symlink exists: {fullPath}");
+            }
+            else
+            {
+                Assert.True(File.Exists(fullPath), $"File symlink exists: {fullPath}");
+            }
+            Assert.NotNull(entry.LinkName);
+            Assert.NotEmpty(entry.LinkName);
+            Assert.True(File.Exists(linkFullPath), $"File symlink target exists: {linkFullPath}");
         }
 
         private int GetExpectedEntriesCount(string expectedFilesDir)
