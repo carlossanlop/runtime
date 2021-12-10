@@ -99,6 +99,8 @@ namespace System.IO.Compression
     {
         internal TarArchiveEntry() { }
         public int Checksum { get { throw null; } }
+        public int DevMajor { get { throw null; } }
+        public int DevMinor { get { throw null; } }
         public int Gid { get { throw null; } }
         public string? GName { get { throw null; } }
         public long Length { get { throw null; } }
