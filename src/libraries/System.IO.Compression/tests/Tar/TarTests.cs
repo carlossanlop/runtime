@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.IO.Enumeration;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace System.IO.Compression.Tests
@@ -14,6 +15,7 @@ namespace System.IO.Compression.Tests
         // script to generate all the tar files.
         private const string TestUser = "dotnet";
         private const string TestGroup = "devdiv";
+        private const int TestMode = 484; // 744 in octal
         private const int TestUid = 7913;
         private const int TestGid = 3579;
         private const int CharDevMajor = 49;
@@ -280,7 +282,7 @@ namespace System.IO.Compression.Tests
             string fullPath = Path.Join(expectedFilesDir, entry.Name);
             string? linkFullPath = !string.IsNullOrEmpty(entry.LinkName) ? Path.Join(expectedFilesDir, entry.LinkName) : null;
 
-            VerifyEntryOwnership(format, entry);
+            VerifyEntryPermissions(format, entry);
 
             switch (entry.TypeFlag)
             {
@@ -316,8 +318,10 @@ namespace System.IO.Compression.Tests
             }
         }
 
-        private void VerifyEntryOwnership(TarFormat format, TarArchiveEntry entry)
+        private void VerifyEntryPermissions(TarFormat format, TarArchiveEntry entry)
         {
+            Assert.Equal(TestMode, entry.Mode);
+
             Assert.Equal(TestUid, entry.Uid);
             Assert.Equal(TestGid, entry.Gid);
 
