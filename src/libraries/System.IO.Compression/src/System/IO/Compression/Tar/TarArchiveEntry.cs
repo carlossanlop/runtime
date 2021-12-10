@@ -29,6 +29,7 @@ namespace System.IO.Compression
             }
         }
         public string LinkName => _header.LinkName;
+        public int Mode => _header.Mode;
         public string Name => _header.Name;
         public TarArchiveEntryType TypeFlag { get => _header.TypeFlag; }
         public int Uid => _header.Uid;
