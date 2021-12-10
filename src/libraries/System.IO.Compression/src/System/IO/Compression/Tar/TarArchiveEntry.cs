@@ -13,6 +13,8 @@ namespace System.IO.Compression
         internal MemoryStream? _stream;
 
         public int Checksum => _header.Checksum;
+        public int DevMajor => _header.DevMajor;
+        public int DevMinor => _header.DevMinor;
         public int Gid => _header.Gid;
         public string? GName => _header.GName;
         public long Length
