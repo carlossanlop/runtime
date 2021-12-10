@@ -80,7 +80,7 @@ namespace System.IO.Compression
                     //      then it can be split by any  '/' characters, with the first portion being stored here.
                     //      So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
                     //  - Null terminated unless the entire field is set.
-                    if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
+                    if (!TryReadPosixPrefixAttribute(archiveStream))
                     {
                         return false;
                     }
@@ -273,6 +273,25 @@ namespace System.IO.Compression
                 _rawHeader._versionBytes[1] == 0) // null
             {
                 return false;
+            }
+
+            return true;
+        }
+
+        private bool TryReadPosixPrefixAttribute(Stream archiveStream)
+        {
+            if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
+            {
+                return false;
+            }
+
+            Prefix = GetTrimmedUtf8String(_rawHeader._prefixBytes);
+
+            // The Prefix byte array is used to store the ending path segments that did not fit in the Name byte array.
+            // Note: Prefix may end in a directory separator.
+            if (!string.IsNullOrEmpty(Prefix))
+            {
+                Name = Path.Join(Prefix, Name);
             }
 
             return true;
