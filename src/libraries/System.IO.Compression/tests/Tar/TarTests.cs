@@ -354,13 +354,21 @@ namespace System.IO.Compression.Tests
 
         private void VerifyEntryPermissions(TarFormat format, TarArchiveEntry entry)
         {
-            // The expected value of the mode and permissions of an extended attributes are not described
-            // in the spec, so their value will vary depending on the tool that created the archive.
+            // The expected value of the mode and permissions of an extended attributes are not described in
+            // the spec, so their value will vary depending on the rules of the tool that created the archive.
             if (entry.TypeFlag
                 is not TarArchiveEntryType.ExtendedAttributes
                 and not TarArchiveEntryType.GlobalExtendedAttributes)
             {
-                Assert.Equal(TestMode, entry.Mode);
+                // Skip checking mode of a symbolic link. From 'man chmod':
+                // "chmod never changes the permissions of symbolic links; the chmod system call cannot change their
+                // permissions. This is not a problem since the permissions of symbolic links are never used. However,
+                // for each symbolic link listed on the command line, chmod changes the permissions of the pointed-to
+                // file. In contrast, chmod ignores symbolic links encountered during recursive directory traversals."
+                if (entry.TypeFlag is not TarArchiveEntryType.SymbolicLink)
+                {
+                    Assert.Equal(TestMode, entry.Mode);
+                }
 
                 Assert.Equal(TestUid, entry.Uid);
                 Assert.Equal(TestGid, entry.Gid);
