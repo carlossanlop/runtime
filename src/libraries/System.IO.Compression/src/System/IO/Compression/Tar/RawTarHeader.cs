@@ -73,6 +73,12 @@ namespace System.IO.Compression
             {
                 return false;
             }
+            // Empty checksum means this is an invalid (all blank) entry, finish early
+            if (IsAllZeros(_checksumBytes))
+            {
+                return false;
+            }
+
             _typeFlagBytes = new byte[FieldLengths.TypeFlag];
             if (archiveStream.Read(_typeFlagBytes) != FieldLengths.TypeFlag)
             {
@@ -84,6 +90,18 @@ namespace System.IO.Compression
                 return false;
             }
 
+            return true;
+        }
+
+        private bool IsAllZeros(byte[] array)
+        {
+            for (int i = 0; i < array.Length; i++)
+            {
+                if (array[i] != 0)
+                {
+                    return false;
+                }
+            }
             return true;
         }
 
