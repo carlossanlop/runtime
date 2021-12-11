@@ -216,8 +216,8 @@ namespace System.IO.Compression.Tests
 
         public static IEnumerable<object[]> Links_Data()
         {
-            // yield return new object[] { TestCaseHardLink };
-            // yield return new object[] { TestCaseSymLink };
+            yield return new object[] { TestCaseHardLink };
+            yield return new object[] { TestCaseSymLink };
             yield return new object[] { TestCaseFolderSymlinkFolderSubFolderFile };
         }
 
@@ -312,6 +312,7 @@ namespace System.IO.Compression.Tests
                 int expectedEntriesCount = GetExpectedEntriesCount(expectedFilesDir);
                 Assert.Equal(expectedEntriesCount, actualEntriesCount);
             }
+            // TODO: Add verification of total number of entries for 'devices' (there are more in pax)
         }
 
         private void VerifyEntry(TarArchiveEntry entry, TarFormat format, string expectedFilesDir)
@@ -352,6 +353,7 @@ namespace System.IO.Compression.Tests
                     Assert.Equal(CharDevMinor, entry.DevMinor);
                     break;
 
+                // TODO: ExtendedAttributes entries should not reach the user
                 case TarArchiveEntryType.ExtendedAttributes:
                 case TarArchiveEntryType.GlobalExtendedAttributes:
                     Assert.NotNull(entry.ExtendedAttributes);
