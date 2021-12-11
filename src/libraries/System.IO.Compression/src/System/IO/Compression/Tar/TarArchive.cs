@@ -53,7 +53,7 @@ namespace System.IO.Compression
 
             TarArchiveEntry? entry = null;
 
-            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, out TarHeader header))
+            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, _format, out TarHeader header))
             {
                 entry = new TarArchiveEntry(this, header);
                 AddEntry(entry);

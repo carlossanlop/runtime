@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace System.IO.Compression
@@ -10,7 +11,7 @@ namespace System.IO.Compression
     {
         private RawTarHeader _rawHeader;
 
-        internal TarFormat Format { get; private set; }
+        internal TarFormat Format { get; set; }
 
         // Common attributes
 
@@ -42,10 +43,16 @@ namespace System.IO.Compression
 
         internal long DataStartPosition { get; private set; }
 
-        internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, out TarHeader header)
+        internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, TarFormat currentArchiveFormat, out TarHeader header)
         {
             header = default;
-            header.Format = TarFormat.Unknown;
+
+            // If archive format is unknown, this is the first entry we read
+            // If pax, then any entries read as ustar should be considered pax
+            // Any other combination means the archive is malformed: having
+            // multiple incompatible entries in the same archive is not expected.
+            header.Format = currentArchiveFormat;
+
             return header.TryReadAttributes(archiveStream, lastDataStartPosition);
         }
 
@@ -128,6 +135,7 @@ namespace System.IO.Compression
                 {
                     ExtendedAttributes = ReadPaxExtendedAttributes(archiveStream);
                     paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                    ReplaceNormalAttributesWithExtended();
                 }
                 else
                 {
@@ -140,7 +148,10 @@ namespace System.IO.Compression
                 throw new NotImplementedException("gnu format not yet implemented");
             }
 
-            DataStartPosition = lastDataStartPosition + 512 + Size + paddingAfterData;
+            DataStartPosition = lastDataStartPosition +
+                TarArchive.RecordSize + // normal attributes
+                Size +                  // either data or extended attributes
+                paddingAfterData;       // block alignment space
 
             return true;
         }
@@ -241,15 +252,18 @@ namespace System.IO.Compression
             //  - Null terminated unless the entire field is filled.
             LinkName = GetTrimmedUtf8String(_rawHeader._linkNameBytes);
 
-            if (TypeFlag is
-                TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+            if (Format == TarFormat.Unknown)
             {
-                Format = TarFormat.Pax;
-            }
-            else
-            {
-                // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
-                Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+                if (TypeFlag is
+                    TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+                {
+                    Format = TarFormat.Pax;
+                }
+                else
+                {
+                    // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
+                    Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+                }
             }
 
             return true;
@@ -349,12 +363,15 @@ namespace System.IO.Compression
             return true;
         }
 
-        private Dictionary<string, string>? ReadPaxExtendedAttributes(Stream archiveStream)
+        private Dictionary<string, string> ReadPaxExtendedAttributes(Stream archiveStream)
         {
             Dictionary<string, string> attributes = new();
-            int totalBytesRead = 0;
-            StreamReader reader = new(archiveStream, Encoding.UTF8);
 
+            // Prevent the stream from advancing beyond the data
+            int bufferSize = Size <= int.MaxValue ? (int)Size : 1;
+
+            int totalBytesRead = 0;
+            using StreamReader reader = new(archiveStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true);
             while (totalBytesRead < Size)
             {
                 if (!TryGetNextExtendedAttribute(attributes, reader, out int bytesRead))
@@ -407,6 +424,40 @@ namespace System.IO.Compression
             attributes.Add(keyAndValueArray[0], keyAndValueArray[1]);
 
             return true;
+        }
+
+        private void ReplaceNormalAttributesWithExtended()
+        {
+            Debug.Assert(ExtendedAttributes != null);
+
+            if (ExtendedAttributes.ContainsKey("uname"))
+            {
+                UName = ExtendedAttributes["uname"];
+            }
+            if (ExtendedAttributes.ContainsKey("uid"))
+            {
+                Uid = int.Parse(ExtendedAttributes["uid"]);
+            }
+            if (ExtendedAttributes.ContainsKey("gname"))
+            {
+                GName = ExtendedAttributes["gname"];
+            }
+            if (ExtendedAttributes.ContainsKey("gid"))
+            {
+                Gid = int.Parse(ExtendedAttributes["gid"]);
+            }
+            if (ExtendedAttributes.ContainsKey("path"))
+            {
+                Name = ExtendedAttributes["path"];
+            }
+            if (ExtendedAttributes.ContainsKey("linkpath"))
+            {
+                LinkName = ExtendedAttributes["linkpath"];
+            }
+            if (ExtendedAttributes.ContainsKey("size"))
+            {
+                Size = long.Parse(ExtendedAttributes["size"]);
+            }
         }
 
         // Returns the ASCII string contained in the specified buffer of bytes,
