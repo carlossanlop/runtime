@@ -101,6 +101,7 @@ namespace System.IO.Compression
         public int Checksum { get { throw null; } }
         public int DevMajor { get { throw null; } }
         public int DevMinor { get { throw null; } }
+        public System.Collections.Generic.IReadOnlyDictionary<string, string>? ExtendedAttributes { get { throw null; } }
         public int Gid { get { throw null; } }
         public string? GName { get { throw null; } }
         public long Length { get { throw null; } }
@@ -110,7 +111,7 @@ namespace System.IO.Compression
         public System.IO.Compression.TarArchiveEntryType TypeFlag { get { throw null; } }
         public int Uid { get { throw null; } }
         public string? UName { get { throw null; } }
-        public System.IO.Stream Open() { throw null; }
+        public System.IO.Stream? Open() { throw null; }
         public override string ToString() { throw null; }
     }
     public enum TarArchiveEntryType
@@ -124,6 +125,8 @@ namespace System.IO.Compression
         Directory = '5',
         Fifo = '6',
         Contiguous = '7',
+        ExtendedAttributes = 'x',
+        GlobalExtendedAttributes = 'g',
     }
     public enum TarArchiveMode
     {
@@ -134,6 +137,7 @@ namespace System.IO.Compression
         Unknown,
         V7,
         Ustar,
+        Pax,
     }
     public class TarOptions
     {
