@@ -53,7 +53,32 @@ namespace System.IO.Compression
             // multiple incompatible entries in the same archive is not expected.
             header.Format = currentArchiveFormat;
 
-            return header.TryReadAttributes(archiveStream, lastDataStartPosition);
+            if (!header.TryReadAttributes(archiveStream, lastDataStartPosition))
+            {
+                return false;
+            }
+
+            if (header.Format == TarFormat.Pax)
+            {
+                // TODO: Figure out how to handle GlobalExtendedAttributes
+
+                // If the current header type represents extended attributes, then the actual header we
+                // need to return is the next one, but with its normal attributes replaced with the ones
+                // found in the current header's extended attributes.
+                if (header.TypeFlag == TarArchiveEntryType.ExtendedAttributes)
+                {
+                    TarHeader nextHeader = default;
+                    nextHeader.Format = TarFormat.Pax;
+                    if (!nextHeader.TryReadAttributes(archiveStream, header.DataStartPosition))
+                    {
+                        return false;
+                    }
+                    nextHeader.ReplaceNormalAttributesWithExtended(header);
+                    header = nextHeader;
+                }
+            }
+
+            return true;
         }
 
         private bool TryReadAttributes(Stream archiveStream, long lastDataStartPosition)
@@ -135,7 +160,6 @@ namespace System.IO.Compression
                 {
                     ExtendedAttributes = ReadPaxExtendedAttributes(archiveStream);
                     paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
-                    ReplaceNormalAttributesWithExtended();
                 }
                 else
                 {
@@ -147,7 +171,7 @@ namespace System.IO.Compression
             {
                 throw new NotImplementedException("gnu format not yet implemented");
             }
-
+            // TODO: This does not apply to GNU
             DataStartPosition = lastDataStartPosition +
                 TarArchive.RecordSize + // normal attributes
                 Size +                  // either data or extended attributes
@@ -367,14 +391,12 @@ namespace System.IO.Compression
         {
             Dictionary<string, string> attributes = new();
 
-            // Prevent the stream from advancing beyond the data
-            int bufferSize = Size <= int.MaxValue ? (int)Size : 1;
-
             int totalBytesRead = 0;
-            using StreamReader reader = new(archiveStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize, leaveOpen: true);
+
+            StringBuilder sb = new();
             while (totalBytesRead < Size)
             {
-                if (!TryGetNextExtendedAttribute(attributes, reader, out int bytesRead))
+                if (!TryGetNextExtendedAttribute(archiveStream, sb, attributes, out int bytesRead))
                 {
                     break;
                 }
@@ -389,10 +411,23 @@ namespace System.IO.Compression
             return attributes;
         }
 
-        private bool TryGetNextExtendedAttribute(Dictionary<string, string> attributes, StreamReader reader, out int bytesRead)
+        private bool TryGetNextExtendedAttribute(Stream archiveStream, StringBuilder sb, Dictionary<string, string> attributes, out int bytesRead)
         {
             bytesRead = 0;
-            string? nextAttribute = reader.ReadLine();
+            sb.Clear();
+
+            int b;
+            while ((b = archiveStream.ReadByte()) != -1 && b != '\n')
+            {
+                sb.Append((char)b);
+            }
+
+            if (b == -1)
+            {
+                return false;
+            }
+
+            string nextAttribute = sb.ToString();
 
             if (nextAttribute == null)
             {
@@ -426,37 +461,39 @@ namespace System.IO.Compression
             return true;
         }
 
-        private void ReplaceNormalAttributesWithExtended()
+        private void ReplaceNormalAttributesWithExtended(TarHeader extendedAttributesHeader)
         {
-            Debug.Assert(ExtendedAttributes != null);
+            Debug.Assert(extendedAttributesHeader.ExtendedAttributes != null);
 
-            if (ExtendedAttributes.ContainsKey("uname"))
+            Dictionary<string, string> ea = extendedAttributesHeader.ExtendedAttributes;
+
+            if (ea.ContainsKey("uname"))
             {
-                UName = ExtendedAttributes["uname"];
+                UName = ea["uname"];
             }
-            if (ExtendedAttributes.ContainsKey("uid"))
+            if (ea.ContainsKey("uid"))
             {
-                Uid = int.Parse(ExtendedAttributes["uid"]);
+                Uid = int.Parse(ea["uid"]);
             }
-            if (ExtendedAttributes.ContainsKey("gname"))
+            if (ea.ContainsKey("gname"))
             {
-                GName = ExtendedAttributes["gname"];
+                GName = ea["gname"];
             }
-            if (ExtendedAttributes.ContainsKey("gid"))
+            if (ea.ContainsKey("gid"))
             {
-                Gid = int.Parse(ExtendedAttributes["gid"]);
+                Gid = int.Parse(ea["gid"]);
             }
-            if (ExtendedAttributes.ContainsKey("path"))
+            if (ea.ContainsKey("path"))
             {
-                Name = ExtendedAttributes["path"];
+                Name = ea["path"];
             }
-            if (ExtendedAttributes.ContainsKey("linkpath"))
+            if (ea.ContainsKey("linkpath"))
             {
-                LinkName = ExtendedAttributes["linkpath"];
+                LinkName = ea["linkpath"];
             }
-            if (ExtendedAttributes.ContainsKey("size"))
+            if (ea.ContainsKey("size"))
             {
-                Size = long.Parse(ExtendedAttributes["size"]);
+                Size = long.Parse(ea["size"]);
             }
         }
 
