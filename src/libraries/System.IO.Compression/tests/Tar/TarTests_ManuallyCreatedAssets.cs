@@ -5,8 +5,10 @@ using Xunit;
 
 namespace System.IO.Compression.Tests
 {
-    public partial class TarTests_ManuallyCreatedAssets : TarTests
+    public partial class TarTests : FileCleanupTestBase
     {
+        #region Tests that manually create expected files
+
         // Workaround for 'Read_Uncompressed_V7_Links'
         [Theory]
         [InlineData("file_hardlink")]
@@ -16,7 +18,7 @@ namespace System.IO.Compression.Tests
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
 
-            VerifyTarFileContents(
+            CompareTarFileContentsWithDirectoryContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
                 tmpDir.Path);
@@ -31,7 +33,7 @@ namespace System.IO.Compression.Tests
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
 
-            VerifyTarFileContents(
+            CompareTarFileContentsWithDirectoryContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
                 tmpDir.Path);
@@ -47,7 +49,7 @@ namespace System.IO.Compression.Tests
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
 
-            VerifyTarFileContents(
+            CompareTarFileContentsWithDirectoryContents(
                 CompressionMethod.Uncompressed,
                 GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
                 tmpDir.Path);
@@ -62,11 +64,15 @@ namespace System.IO.Compression.Tests
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
 
-            VerifyTarFileContents(
+            CompareTarFileContentsWithDirectoryContents(
                 CompressionMethod.GZip,
                 GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
                 tmpDir.Path);
         }
+
+        #endregion
+
+        #region Helpers
 
         private TempDirectory GenerateExpectedLinkFilesAndFolders(string testCaseName)
         {
@@ -133,5 +139,7 @@ namespace System.IO.Compression.Tests
             string linkPath = Path.Join(tmpDir.Path, "childlink");
             Directory.CreateSymbolicLink(linkPath, childPath);
         }
+
+        #endregion
     }
 }

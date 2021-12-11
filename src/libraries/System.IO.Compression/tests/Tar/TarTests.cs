@@ -85,20 +85,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Uncompressed_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_V7_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName);
 
         #endregion
 
@@ -107,20 +101,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Gzip_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.V7, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Gzip_V7_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.V7, testCaseName);
 
         #endregion
 
@@ -129,20 +117,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_Ustar_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName);
 
         #endregion
 
@@ -151,20 +133,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Ustar, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Gzip_Ustar_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Ustar, testCaseName);
 
         #endregion
 
@@ -173,20 +149,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Uncompressed_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_Pax_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName);
 
         #endregion
 
@@ -195,20 +165,14 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Gzip_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.Pax, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Pax, testCaseName);
 
         // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Gzip_Pax_Links(string testCaseName) =>
-            VerifyTarFileContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.Pax, testCaseName),
-                GetTestCaseFolderPath(testCaseName));
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Pax, testCaseName);
 
         #endregion
 
@@ -276,8 +240,7 @@ namespace System.IO.Compression.Tests
         private static string GetTestCaseFolderPath(string testCaseName) =>
             Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
 
-        // Opens the specified tar file as a stream, decompresses it if necessary, then verifies the contents.
-        protected void VerifyTarFileContents(CompressionMethod compressionMethod, string tarFilePath, string expectedFilesDir)
+        protected void CompareTarFileContentsWithDirectoryContents(CompressionMethod compressionMethod, string tarFilePath, string expectedFilesDir)
         {
             using FileStream fs = File.Open(tarFilePath, FileMode.Open);
 
@@ -297,6 +260,14 @@ namespace System.IO.Compression.Tests
                 default:
                     throw new NotSupportedException();
             }
+        }
+
+        private void VerifyTarFileContents(CompressionMethod compressionMethod, TarFormat format, string testCaseName)
+        {
+            string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
+            string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
+
+            CompareTarFileContentsWithDirectoryContents(compressionMethod, tarFilePath, expectedFilesDir);
         }
 
         // Reads the contents of a stream wrapping an uncompressed tar archive, then compares
@@ -330,7 +301,8 @@ namespace System.IO.Compression.Tests
                         is not TarArchiveEntryType.ExtendedAttributes
                         and not TarArchiveEntryType.GlobalExtendedAttributes);
 
-                Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), actualEntriesCount);
+                int expectedEntriesCount = GetExpectedEntriesCount(expectedFilesDir);
+                Assert.Equal(expectedEntriesCount, actualEntriesCount);
             }
         }
 
