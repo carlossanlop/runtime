@@ -8,5 +8,6 @@ namespace System.IO.Compression
         Unknown,
         V7,
         Ustar,
+        Pax,
     }
 }

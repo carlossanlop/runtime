@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 
 namespace System.IO.Compression
@@ -38,6 +37,8 @@ namespace System.IO.Compression
 
         internal string Prefix { get; private set; }
 
+        // PAX extended attributes
+        internal Dictionary<string, string>? ExtendedAttributes;
 
         internal long DataStartPosition { get; private set; }
 
@@ -68,6 +69,7 @@ namespace System.IO.Compression
             }
             else
             {
+                // Fields that ustar, pax and gnu share identically
                 if (!TryReadPosixAndGnuSharedAttributes(archiveStream))
                 {
                     return false;
@@ -80,27 +82,66 @@ namespace System.IO.Compression
                     //      then it can be split by any  '/' characters, with the first portion being stored here.
                     //      So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
                     //  - Null terminated unless the entire field is set.
-                    if (!TryReadPosixPrefixAttribute(archiveStream))
+                    if (!TryReadUstarPrefixAttribute(archiveStream))
                     {
                         return false;
                     }
-
-                    // Space between end of header and start of file data.
+                    // ustar: Padding is the space between end of header and start of file data.
                     if (!_rawHeader.TryReadPosixPaddingBytes(archiveStream))
                     {
                         return false;
                     }
-                    // Now try to determine if it's pax or should stay ustar
+                }
+                else if (Format == TarFormat.Pax)
+                {
+                    // pax: Does not use the prefix for extended paths like ustar.
+                    // Long paths are saved in the extended attributes section.
+                    if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
+                    {
+                        return false;
+                    }
+
+                    // pax: Padding is the space between end of header and start of:
+                    // - The extended attributes, if the TypeFlag is x or g.
+                    // - The file data, if the previous entry had a TypeFlag of x, or the first entry was g.
+                    if (!_rawHeader.TryReadPosixPaddingBytes(archiveStream))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException("gnu format not yet implemented");
                 }
             }
 
-            long paddingAfterData = SkipFileDataBlock(archiveStream);
-
-            DataStartPosition = Format switch
+            // Read the data or extended attributes section
+            long paddingAfterData;
+            if (Format is TarFormat.V7 or TarFormat.Ustar)
             {
-                TarFormat.V7 or TarFormat.Ustar => lastDataStartPosition + 512 + Size + paddingAfterData,
-                _ => throw new NotSupportedException(),
-            };
+                SkipFileDataBlock(archiveStream);
+                paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+            }
+            else if (Format == TarFormat.Pax)
+            {
+                if (TypeFlag is TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+                {
+                    ExtendedAttributes = ReadPaxExtendedAttributes(archiveStream);
+                    paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                }
+                else
+                {
+                    SkipFileDataBlock(archiveStream);
+                    paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                }
+            }
+            else
+            {
+                throw new NotImplementedException("gnu format not yet implemented");
+            }
+
+            DataStartPosition = lastDataStartPosition + 512 + Size + paddingAfterData;
+
             return true;
         }
 
@@ -176,7 +217,7 @@ namespace System.IO.Compression
             }
 
             // The filesystem entry type. v7 calls this field 'linkflag'.
-            // - v7 defines:
+            // v7 defines:
             //     \0: Normal
             //      1: Hardlink
             //      2: Symlink
@@ -187,6 +228,9 @@ namespace System.IO.Compression
             //      7: Contiguous
             // ustar defines the same as v7, plus:
             //      0: Normal (ustar version)
+            // pax defines the same as v7 and ustar, plus:
+            //      x: Entry with extended attributes to describe the next entry.
+            //      g: Entry with global extended attributes to describe all the rest of the entries.
             //  other: Unrecognized values that are treated as Normal.
             TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagBytes[0];
 
@@ -197,8 +241,16 @@ namespace System.IO.Compression
             //  - Null terminated unless the entire field is filled.
             LinkName = GetTrimmedUtf8String(_rawHeader._linkNameBytes);
 
-            // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
-            Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+            if (TypeFlag is
+                TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+            {
+                Format = TarFormat.Pax;
+            }
+            else
+            {
+                // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal'.
+                Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+            }
 
             return true;
         }
@@ -256,7 +308,7 @@ namespace System.IO.Compression
 
             // These fields only have valid numbers with these two entry types,
             // otherwise they are filled with nulls or spaces
-            if (TypeFlag == TarArchiveEntryType.Character || TypeFlag == TarArchiveEntryType.Block)
+            if (TypeFlag is TarArchiveEntryType.Character or TarArchiveEntryType.Block)
             {
                 // Major number for a character device or block device entry.
                 // ustar:
@@ -278,7 +330,7 @@ namespace System.IO.Compression
             return true;
         }
 
-        private bool TryReadPosixPrefixAttribute(Stream archiveStream)
+        private bool TryReadUstarPrefixAttribute(Stream archiveStream)
         {
             if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
             {
@@ -293,6 +345,66 @@ namespace System.IO.Compression
             {
                 Name = Path.Join(Prefix, Name);
             }
+
+            return true;
+        }
+
+        private Dictionary<string, string>? ReadPaxExtendedAttributes(Stream archiveStream)
+        {
+            Dictionary<string, string> attributes = new();
+            int totalBytesRead = 0;
+            StreamReader reader = new(archiveStream, Encoding.UTF8);
+
+            while (totalBytesRead < Size)
+            {
+                if (!TryGetNextExtendedAttribute(attributes, reader, out int bytesRead))
+                {
+                    break;
+                }
+                totalBytesRead += bytesRead;
+            }
+
+            if (totalBytesRead != Size)
+            {
+                throw new FormatException("The reported size for the extended attributes section was incorrect."); // TODO
+            }
+
+            return attributes;
+        }
+
+        private bool TryGetNextExtendedAttribute(Dictionary<string, string> attributes, StreamReader reader, out int bytesRead)
+        {
+            bytesRead = 0;
+            string? nextAttribute = reader.ReadLine();
+
+            if (nextAttribute == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(nextAttribute))
+            {
+                return false;
+            }
+
+            string[] attributeArray = nextAttribute.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (attributeArray.Length != 2)
+            {
+                return false;
+            }
+
+            if (!int.TryParse(attributeArray[0], out bytesRead))
+            {
+                return false;
+            }
+
+            string[] keyAndValueArray = attributeArray[1].Split('=', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (keyAndValueArray.Length != 2)
+            {
+                return false;
+            }
+
+            attributes.Add(keyAndValueArray[0], keyAndValueArray[1]);
 
             return true;
         }
@@ -336,9 +448,24 @@ namespace System.IO.Compression
             return offset.DateTime;
         }
 
-        // Move the BinaryReader pointer to the first byte of the next file header.
-        // Returns the total number of null characters found after the file contents.
-        private long SkipFileDataBlock(Stream archiveStream)
+
+        // After the file contents, there may be zero or more null characters,
+        // which exist to ensure the data is aligned to the record size. Skip them and
+        // set the stream position to the first byte of the next entry.
+        private long SkipBlockAlignmentPadding(Stream archiveStream)
+        {
+            long ceilingMultipleOfRecordSize = ((TarArchive.RecordSize - 1) | (Size - 1)) + 1;
+            int bufferLength = (int)(ceilingMultipleOfRecordSize - Size);
+            if (bufferLength > 0)
+            {
+                return archiveStream.Read(new byte[bufferLength]);
+            }
+            return 0;
+        }
+
+        // Move the stream position to the first byte after the data ends.
+        // TODO: This method should go away after figuring out what to do with the data on unseekable streams.
+        private void SkipFileDataBlock(Stream archiveStream)
         {
             long bytesToSkip = Size;
             byte[]? buffer = null;
@@ -352,31 +479,17 @@ namespace System.IO.Compression
                     }
                     if (archiveStream.Read(buffer) != int.MaxValue)
                     {
-                        return Size - bytesToSkip;
+                        // Reached end of stream
+                        return;
                     }
                     bytesToSkip -= int.MaxValue;
                 }
                 else
                 {
-                    int totalRead = archiveStream.Read(new byte[bytesToSkip]);
-                    if (totalRead != bytesToSkip)
-                    {
-                        return totalRead;
-                    }
-                    break;
+                    archiveStream.Read(new byte[bytesToSkip]);
+                    return;
                 }
             }
-
-            // After the file contents, there may be zero or more null characters,
-            // which exist to ensure the data is aligned to the record size.
-            long ceilingMultipleOfRecordSize= ((TarArchive.RecordSize - 1) | (Size - 1)) + 1;
-            int bufferLength = (int)(ceilingMultipleOfRecordSize - Size);
-            if (bufferLength > 0)
-            {
-                buffer = new byte[bufferLength];
-                return archiveStream.Read(buffer);
-            }
-            return 0;
         }
     }
 }

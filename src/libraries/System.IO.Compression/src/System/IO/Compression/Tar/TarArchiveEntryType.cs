@@ -14,5 +14,7 @@ namespace System.IO.Compression
         Directory = '5',
         Fifo = '6',
         Contiguous = '7',
+        ExtendedAttributes = 'x',
+        GlobalExtendedAttributes = 'g',
     }
 }

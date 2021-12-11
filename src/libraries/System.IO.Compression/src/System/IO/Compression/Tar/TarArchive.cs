@@ -37,7 +37,7 @@ namespace System.IO.Compression
                     }
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("TarOptions.Mode out of range.", innerException: null);
+                    throw new ArgumentOutOfRangeException("TarOptions.Mode out of range.", innerException: null); // TODO
             }
 
             _archiveStream = stream;
@@ -65,7 +65,7 @@ namespace System.IO.Compression
                 }
                 else if (header.Format != _format)
                 {
-                    throw new FormatException("The archive contains entries in different tar formats.");
+                    throw new FormatException("The archive contains entries in different tar formats."); // TODO
                 }
             }
 
