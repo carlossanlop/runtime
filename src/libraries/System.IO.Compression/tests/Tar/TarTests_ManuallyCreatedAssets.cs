@@ -11,9 +11,7 @@ namespace System.IO.Compression.Tests
 
         // Workaround for 'Read_Uncompressed_V7_Links'
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_V7_Links_ManuallyCreated(string testCaseName)
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
@@ -26,9 +24,7 @@ namespace System.IO.Compression.Tests
 
         // Workaround for 'Read_Gzip_V7_Links'
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Gzip_V7_Links_ManuallyCreated(string testCaseName)
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
@@ -42,9 +38,7 @@ namespace System.IO.Compression.Tests
 
         // Workaround for 'Read_Uncompressed_Ustar_Links'
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Uncompressed_Ustar_Links_ManuallyCreated(string testCaseName)
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
@@ -57,9 +51,7 @@ namespace System.IO.Compression.Tests
 
         // Workaround for 'Read_Gzip_Ustar_Links'
         [Theory]
-        [InlineData("file_hardlink")]
-        [InlineData("file_symlink")]
-        [InlineData("foldersymlink_folder_subfolder_file")]
+        [MemberData(nameof(Links_Data))]
         public void Read_Gzip_Ustar_Links_ManuallyCreated(string testCaseName)
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
@@ -79,13 +71,13 @@ namespace System.IO.Compression.Tests
             var tmpDir = new TempDirectory();
             switch (testCaseName)
             {
-                case "file_hardlink":
+                case TestCaseHardLink:
                     GenerateHardLinkTestAssets(tmpDir);
                     break;
-                case "file_symlink":
+                case TestCaseSymLink:
                     GenerateSymlinkTestAssets(tmpDir);
                     break;
-                case "foldersymlink_folder_subfolder_file":
+                case TestCaseFolderSymlinkFolderSubFolderFile:
                     GenerateFolderSymlinkTestAssets(tmpDir);
                     break;
                 default:
@@ -103,6 +95,8 @@ namespace System.IO.Compression.Tests
             string linkPath = Path.Join(tmpDir.Path, "hardlink.txt");
 
             CreateHardLink(linkPath, targetPath);
+
+            Assert.True(File.Exists(linkPath), $"Hard link was not created: {linkPath}");
         }
 
         // Generates a file and folder structure like the one from the 'file_symlink' test case.
@@ -111,8 +105,13 @@ namespace System.IO.Compression.Tests
             string targetPath = Path.Join(tmpDir.Path, "file.txt");
             GenerateFileAsset(targetPath);
 
-            string linkPath = Path.Join(tmpDir.Path, "link.txt");
-            File.CreateSymbolicLink(linkPath, targetPath);
+            FileInfo linkInfo = new(Path.Join(tmpDir.Path, "link.txt"));
+            linkInfo.CreateAsSymbolicLink(targetPath);
+            Assert.True(linkInfo.Exists, $"File symbolic link was not created: {linkInfo.FullName}");
+
+            var targetInfo = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
+            Assert.NotNull(targetInfo);
+            Assert.True(targetInfo.Exists, $"File symbolic link target was not found: {targetInfo.FullName}");
         }
 
         // Creates a file in the specified location.
@@ -122,6 +121,7 @@ namespace System.IO.Compression.Tests
             {
                 writer.Write("Hello world!");
             }
+            Assert.True(File.Exists(filePath), $"File was not created: {filePath}");
         }
 
         // Generates a file and folder structure like the one from the 'foldersymlink_folder_subfolder_file' test case.
@@ -129,15 +129,22 @@ namespace System.IO.Compression.Tests
         {
             string parentPath = Path.Join(tmpDir.Path, "parent");
             Directory.CreateDirectory(parentPath);
+            Assert.True(Directory.Exists(parentPath), $"Parent directory was not created: {parentPath}");
 
             string childPath = Path.Join(parentPath, "child");
             Directory.CreateDirectory(childPath);
+            Assert.True(Directory.Exists(childPath), $"Child directory was not created: {childPath}");
 
             string filePath = Path.Join(childPath, "file.txt");
             GenerateFileAsset(filePath);
 
-            string linkPath = Path.Join(tmpDir.Path, "childlink");
-            Directory.CreateSymbolicLink(linkPath, childPath);
+            DirectoryInfo linkInfo = new(Path.Join(tmpDir.Path, "childlink"));
+            linkInfo.CreateAsSymbolicLink(childPath);
+            Assert.True(linkInfo.Exists, $"Directory symbolic link was not created: {linkInfo.FullName}");
+
+            var targetInfo = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
+            Assert.NotNull(targetInfo);
+            Assert.True(targetInfo.Exists, $"Directory symbolic link target was not found: {targetInfo.FullName}");
         }
 
         #endregion

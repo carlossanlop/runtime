@@ -16,13 +16,21 @@ namespace System.IO.Compression.Tests
         // script to generate all the tar files.
         private const string TestUser = "dotnet";
         private const string TestGroup = "devdiv";
+
         private const int TestMode = 484; // 744 in octal
+
         private const int TestUid = 7913;
         private const int TestGid = 3579;
+
         private const int CharDevMajor = 49;
         private const int CharDevMinor = 86;
+
         private const int BlockDevMajor = 71;
         private const int BlockDevMinor = 53;
+
+        private const string TestCaseHardLink = "file_hardlink";
+        private const string TestCaseSymLink = "file_symlink";
+        private const string TestCaseFolderSymlinkFolderSubFolderFile = "foldersymlink_folder_subfolder_file";
 
         #endregion
 
@@ -208,9 +216,9 @@ namespace System.IO.Compression.Tests
 
         public static IEnumerable<object[]> Links_Data()
         {
-            yield return new object[] { "file_hardlink" };
-            yield return new object[] { "file_symlink" };
-            yield return new object[] { "foldersymlink_folder_subfolder_file" };
+            // yield return new object[] { TestCaseHardLink };
+            // yield return new object[] { TestCaseSymLink };
+            yield return new object[] { TestCaseFolderSymlinkFolderSubFolderFile };
         }
 
         #endregion
@@ -308,8 +316,9 @@ namespace System.IO.Compression.Tests
 
         private void VerifyEntry(TarArchiveEntry entry, TarFormat format, string expectedFilesDir)
         {
-            string fullPath = Path.Join(expectedFilesDir, entry.Name);
-            string? linkFullPath = !string.IsNullOrEmpty(entry.LinkName) ? Path.Join(expectedFilesDir, entry.LinkName) : null;
+            Assert.NotEmpty(entry.Name);
+            string fullPath = Path.GetFullPath(Path.Join(expectedFilesDir, entry.Name));
+            string? linkTargetFullPath = !string.IsNullOrEmpty(entry.LinkName) ? Path.GetFullPath(Path.Join(expectedFilesDir, entry.LinkName)) : null;
 
             VerifyEntryPermissions(format, entry);
 
@@ -317,19 +326,20 @@ namespace System.IO.Compression.Tests
             {
                 case TarArchiveEntryType.OldNormal:
                 case TarArchiveEntryType.Normal:
-                    Assert.True(File.Exists(fullPath), $"File exists: {fullPath}");
+                    Assert.True(File.Exists(fullPath), $"File does not exist: {fullPath}");
                     break;
 
                 case TarArchiveEntryType.Link:
-                    VerifyHardLinkEntry(entry, fullPath, linkFullPath);
+                    VerifyHardLinkEntry(entry, fullPath, linkTargetFullPath);
                     break;
 
                 case TarArchiveEntryType.Directory:
-                    Assert.True(Directory.Exists(fullPath), $"Directory exists: {fullPath}");
+                    Assert.True(Directory.Exists(fullPath), $"Directory does not exist: {fullPath}");
                     break;
 
                 case TarArchiveEntryType.SymbolicLink:
-                    VerifySymbolicLinkEntry(entry, fullPath, linkFullPath);
+                    Assert.NotEmpty(entry.LinkName);
+                    VerifySymbolicLinkEntry(link: fullPath, target: linkTargetFullPath);
                     break;
 
                 case TarArchiveEntryType.Block:
@@ -381,7 +391,7 @@ namespace System.IO.Compression.Tests
                         Assert.Null(entry.GName);
                         break;
 
-                    case TarFormat.Ustar:
+                    default:
                         Assert.Equal(TestUser, entry.UName);
                         Assert.Equal(TestGroup, entry.GName);
                         break;
@@ -389,29 +399,37 @@ namespace System.IO.Compression.Tests
             }
         }
 
-        private void VerifyHardLinkEntry(TarArchiveEntry entry, string fullPath, string linkFullPath)
+        private void VerifyHardLinkEntry(TarArchiveEntry entry, string link, string target)
         {
-            Assert.True(File.Exists(fullPath), $"File hardlink exists: {fullPath}");
             Assert.NotNull(entry.LinkName);
             Assert.NotEmpty(entry.LinkName);
-            Assert.True(File.Exists(linkFullPath), $"File hardlink target exists: {fullPath}");
+
+            Assert.True(File.Exists(link), $"File hardlink does not exist: {link}");
+            Assert.True(File.Exists(target), $"File hardlink target does not exist: {target}");
         }
 
-        private void VerifySymbolicLinkEntry(TarArchiveEntry entry, string fullPath, string linkFullPath)
+        private void VerifySymbolicLinkEntry(string link, string target)
         {
-            var symLinkInfo = new FileInfo(fullPath);
-            Assert.True(symLinkInfo.Attributes.HasFlag(FileAttributes.ReparsePoint), "Expected file has ReparsePoint flag");
-            if (symLinkInfo.Attributes.HasFlag(FileAttributes.Directory))
+            FileAttributes attributes = File.GetAttributes(link);
+            Assert.True(attributes.HasFlag(FileAttributes.ReparsePoint), $"File is not a symlink: {link}");
+
+            FileSystemInfo linkInfo;
+            if (attributes.HasFlag(FileAttributes.Directory))
             {
-                Assert.True(Directory.Exists(fullPath), $"Directory symlink exists: {fullPath}");
+                Assert.True(Directory.Exists(link), $"Directory symlink does not exist: {link}");
+                linkInfo = new DirectoryInfo(link);
             }
             else
             {
-                Assert.True(File.Exists(fullPath), $"File symlink exists: {fullPath}");
+                Assert.True(File.Exists(link), $"File symlink does not exist: {link}");
+                linkInfo = new FileInfo(link);
             }
-            Assert.NotNull(entry.LinkName);
-            Assert.NotEmpty(entry.LinkName);
-            Assert.True(File.Exists(linkFullPath), $"File symlink target exists: {linkFullPath}");
+
+            Assert.True(linkInfo.Exists, $"Symlink does not exist: {linkInfo.FullName}");
+            var targetInfo = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
+            Assert.NotNull(targetInfo);
+            Assert.True(targetInfo.Exists, $"Symlink target does not exist: {targetInfo.FullName}");
+            Assert.Equal(targetInfo.FullName, Path.GetFullPath(target));
         }
 
         private int GetExpectedEntriesCount(string expectedFilesDir)
