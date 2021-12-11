@@ -4,13 +4,14 @@
 using System.Collections.Generic;
 using System.IO.Enumeration;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace System.IO.Compression.Tests
 {
     public partial class TarTests : FileCleanupTestBase
     {
+        #region Constants
+
         // These constants were used by the runtime-assets
         // script to generate all the tar files.
         private const string TestUser = "dotnet";
@@ -22,6 +23,8 @@ namespace System.IO.Compression.Tests
         private const int CharDevMinor = 86;
         private const int BlockDevMajor = 71;
         private const int BlockDevMinor = 53;
+
+        #endregion
 
         #region Basic validation
 
@@ -165,7 +168,51 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
-        #region Helpers
+        #region Pax Uncompressed
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Uncompressed_Pax_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.Uncompressed,
+                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName),
+                GetTestCaseFolderPath(testCaseName));
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_Pax_Links(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.Uncompressed,
+                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName),
+                GetTestCaseFolderPath(testCaseName));
+
+        #endregion
+
+        #region Pax GZip
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Gzip_Pax_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.GZip,
+                GetTarFile(CompressionMethod.GZip, TarFormat.Pax, testCaseName),
+                GetTestCaseFolderPath(testCaseName));
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Pax_Links(string testCaseName) =>
+            VerifyTarFileContents(
+                CompressionMethod.GZip,
+                GetTarFile(CompressionMethod.GZip, TarFormat.Pax, testCaseName),
+                GetTestCaseFolderPath(testCaseName));
+
+        #endregion
+
+        #region Data
 
         public static IEnumerable<object[]> Normal_FilesAndFolders_V7_Data()
         {
@@ -201,6 +248,10 @@ namespace System.IO.Compression.Tests
             yield return new object[] { "file_symlink" };
             yield return new object[] { "foldersymlink_folder_subfolder_file" };
         }
+
+        #endregion
+
+        #region Helpers
 
         protected enum CompressionMethod
         {
@@ -273,7 +324,13 @@ namespace System.IO.Compression.Tests
             //  because character and block device files cannot be merged to git.
             if (Path.GetFileName(expectedFilesDir) != "devices")
             {
-                Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), extractedEntries.Count());
+                // Exclude the ExtendedAttributes entries
+                var actualEntriesCount = extractedEntries.Count(x =>
+                    x.TypeFlag
+                        is not TarArchiveEntryType.ExtendedAttributes
+                        and not TarArchiveEntryType.GlobalExtendedAttributes);
+
+                Assert.Equal(GetExpectedEntriesCount(expectedFilesDir), actualEntriesCount);
             }
         }
 
@@ -313,6 +370,11 @@ namespace System.IO.Compression.Tests
                     Assert.Equal(CharDevMinor, entry.DevMinor);
                     break;
 
+                case TarArchiveEntryType.ExtendedAttributes:
+                case TarArchiveEntryType.GlobalExtendedAttributes:
+                    Assert.NotNull(entry.ExtendedAttributes);
+                    break;
+
                 default:
                     throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
             }
@@ -320,23 +382,30 @@ namespace System.IO.Compression.Tests
 
         private void VerifyEntryPermissions(TarFormat format, TarArchiveEntry entry)
         {
-            Assert.Equal(TestMode, entry.Mode);
-
-            Assert.Equal(TestUid, entry.Uid);
-            Assert.Equal(TestGid, entry.Gid);
-
-            switch (format)
+            // The expected value of the mode and permissions of an extended attributes are not described
+            // in the spec, so their value will vary depending on the tool that created the archive.
+            if (entry.TypeFlag
+                is not TarArchiveEntryType.ExtendedAttributes
+                and not TarArchiveEntryType.GlobalExtendedAttributes)
             {
-                case TarFormat.V7:
-                    // Fields aren't supported in this format
-                    Assert.Null(entry.UName);
-                    Assert.Null(entry.GName);
-                    break;
+                Assert.Equal(TestMode, entry.Mode);
 
-                case TarFormat.Ustar:
-                    Assert.Equal(TestUser, entry.UName);
-                    Assert.Equal(TestGroup, entry.GName);
-                    break;
+                Assert.Equal(TestUid, entry.Uid);
+                Assert.Equal(TestGid, entry.Gid);
+
+                switch (format)
+                {
+                    case TarFormat.V7:
+                        // Fields aren't supported in this format
+                        Assert.Null(entry.UName);
+                        Assert.Null(entry.GName);
+                        break;
+
+                    case TarFormat.Ustar:
+                        Assert.Equal(TestUser, entry.UName);
+                        Assert.Equal(TestGroup, entry.GName);
+                        break;
+                }
             }
         }
 
