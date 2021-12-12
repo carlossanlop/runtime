@@ -11,7 +11,10 @@ namespace System.IO.Compression
     {
         private RawTarHeader _rawHeader;
 
+        private const string UstarMagic = "ustar";
+        internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
         internal TarFormat Format { get; set; }
+        internal long DataStartPosition { get; private set; }
 
         // Common attributes
 
@@ -40,10 +43,6 @@ namespace System.IO.Compression
 
         // PAX extended attributes
         internal Dictionary<string, string>? ExtendedAttributes;
-
-        internal long DataStartPosition { get; private set; }
-
-        internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
 
         internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, TarFormat currentArchiveFormat, out TarHeader header)
         {
@@ -328,8 +327,8 @@ namespace System.IO.Compression
             // find this out when reading the TypeFlag common attribute.
             if (Format == TarFormat.V7 &&
                 // There's a rare 'ustar' variant that has a space at the end,
-                // but it's ustar compatible nonetheless
-                Magic.Length >= 5 && Magic[0..5] == "ustar")
+                // but it's ustar compatible nonetheless.
+                Magic.Length >= 5 && Magic[0..5] == UstarMagic)
             {
                 // At the very least, it's ustar, but we need to look for
                 // more details later, to determine if it's pax or gnu
@@ -454,7 +453,9 @@ namespace System.IO.Compression
                 return false;
             }
 
-            string[] attributeArray = nextAttribute.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            StringSplitOptions splitOptions = StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
+
+            string[] attributeArray = nextAttribute.Split(' ', 2, splitOptions);
             if (attributeArray.Length != 2)
             {
                 return false;
@@ -465,7 +466,7 @@ namespace System.IO.Compression
                 return false;
             }
 
-            string[] keyAndValueArray = attributeArray[1].Split('=', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            string[] keyAndValueArray = attributeArray[1].Split('=', 2, splitOptions);
             if (keyAndValueArray.Length != 2)
             {
                 return false;
