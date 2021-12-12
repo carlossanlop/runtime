@@ -303,14 +303,8 @@ namespace System.IO.Compression.Tests
             //  because character and block device files cannot be merged to git.
             if (Path.GetFileName(expectedFilesDir) != "devices")
             {
-                // Exclude the ExtendedAttributes entries
-                var actualEntriesCount = extractedEntries.Count(x =>
-                    x.TypeFlag
-                        is not TarArchiveEntryType.ExtendedAttributes
-                        and not TarArchiveEntryType.GlobalExtendedAttributes);
-
                 int expectedEntriesCount = GetExpectedEntriesCount(expectedFilesDir);
-                Assert.Equal(expectedEntriesCount, actualEntriesCount);
+                Assert.Equal(expectedEntriesCount, extractedEntries.Count());
             }
             // TODO: Add verification of total number of entries for 'devices' (there are more in pax)
         }
@@ -353,12 +347,10 @@ namespace System.IO.Compression.Tests
                     Assert.Equal(CharDevMinor, entry.DevMinor);
                     break;
 
-                // TODO: ExtendedAttributes entries should not reach the user
-                case TarArchiveEntryType.ExtendedAttributes:
-                case TarArchiveEntryType.GlobalExtendedAttributes:
-                    Assert.NotNull(entry.ExtendedAttributes);
-                    break;
-
+                // Extended attributes entries should not reach the user
+                case (TarArchiveEntryType)'x':
+                // Global extended attribute entries are extremely rare, the 'tar' command does not generate them
+                case (TarArchiveEntryType)'g':
                 default:
                     throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
             }
@@ -366,38 +358,31 @@ namespace System.IO.Compression.Tests
 
         private void VerifyEntryPermissions(TarFormat format, TarArchiveEntry entry)
         {
-            // The expected value of the mode and permissions of an extended attributes are not described in
-            // the spec, so their value will vary depending on the rules of the tool that created the archive.
-            if (entry.TypeFlag
-                is not TarArchiveEntryType.ExtendedAttributes
-                and not TarArchiveEntryType.GlobalExtendedAttributes)
+            // Skip checking mode of a symbolic link. From 'man chmod':
+            // "chmod never changes the permissions of symbolic links; the chmod system call cannot change their
+            // permissions. This is not a problem since the permissions of symbolic links are never used. However,
+            // for each symbolic link listed on the command line, chmod changes the permissions of the pointed-to
+            // file. In contrast, chmod ignores symbolic links encountered during recursive directory traversals."
+            if (entry.TypeFlag is not TarArchiveEntryType.SymbolicLink)
             {
-                // Skip checking mode of a symbolic link. From 'man chmod':
-                // "chmod never changes the permissions of symbolic links; the chmod system call cannot change their
-                // permissions. This is not a problem since the permissions of symbolic links are never used. However,
-                // for each symbolic link listed on the command line, chmod changes the permissions of the pointed-to
-                // file. In contrast, chmod ignores symbolic links encountered during recursive directory traversals."
-                if (entry.TypeFlag is not TarArchiveEntryType.SymbolicLink)
-                {
-                    Assert.Equal(TestMode, entry.Mode);
-                }
+                Assert.Equal(TestMode, entry.Mode);
+            }
 
-                Assert.Equal(TestUid, entry.Uid);
-                Assert.Equal(TestGid, entry.Gid);
+            Assert.Equal(TestUid, entry.Uid);
+            Assert.Equal(TestGid, entry.Gid);
 
-                switch (format)
-                {
-                    case TarFormat.V7:
-                        // Fields aren't supported in this format
-                        Assert.Null(entry.UName);
-                        Assert.Null(entry.GName);
-                        break;
+            switch (format)
+            {
+                case TarFormat.V7:
+                    // Fields aren't supported in this format
+                    Assert.Null(entry.UName);
+                    Assert.Null(entry.GName);
+                    break;
 
-                    default:
-                        Assert.Equal(TestUser, entry.UName);
-                        Assert.Equal(TestGroup, entry.GName);
-                        break;
-                }
+                default:
+                    Assert.Equal(TestUser, entry.UName);
+                    Assert.Equal(TestGroup, entry.GName);
+                    break;
             }
         }
 
