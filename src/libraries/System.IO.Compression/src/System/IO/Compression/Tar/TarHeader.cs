@@ -43,6 +43,8 @@ namespace System.IO.Compression
 
         internal long DataStartPosition { get; private set; }
 
+        internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
+
         internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, TarFormat currentArchiveFormat, out TarHeader header)
         {
             header = default;
@@ -60,12 +62,10 @@ namespace System.IO.Compression
 
             if (header.Format == TarFormat.Pax)
             {
-                // TODO: Figure out how to handle GlobalExtendedAttributes
-
                 // If the current header type represents extended attributes, then the actual header we
                 // need to return is the next one, but with its normal attributes replaced with the ones
                 // found in the current header's extended attributes.
-                if (header.TypeFlag == TarArchiveEntryType.ExtendedAttributes)
+                if (header.TypeFlag == ExtendedAttributesEntryType)
                 {
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Pax;
@@ -162,7 +162,7 @@ namespace System.IO.Compression
             }
             else if (Format == TarFormat.Pax)
             {
-                if (TypeFlag is TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+                if (TypeFlag is ExtendedAttributesEntryType)
                 {
                     if (!TryReadPaxExtendedAttributes(archiveStream))
                     {
@@ -296,8 +296,7 @@ namespace System.IO.Compression
 
             if (Format == TarFormat.Unknown)
             {
-                if (TypeFlag is
-                    TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
+                if (TypeFlag is ExtendedAttributesEntryType)
                 {
                     Format = TarFormat.Pax;
                 }

@@ -14,7 +14,8 @@ namespace System.IO.Compression
         Directory = '5',
         Fifo = '6',
         Contiguous = '7',
-        ExtendedAttributes = 'x',
-        GlobalExtendedAttributes = 'g',
+        // Entry types that need to be handled internally:
+        // - Extended attributes: x
+        // - Global extended attributes: g
     }
 }

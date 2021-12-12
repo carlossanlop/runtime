@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace System.IO.Compression
@@ -67,17 +68,12 @@ namespace System.IO.Compression
             {
                 throw new InvalidDataException(SR.NotSupported_UnreadableStream);
             }
-            if (_header.Format == TarFormat.Pax &&
-                (TypeFlag is TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes))
-            {
-                // There's no data in an extended attributes entry.
-                // In the case of an ExtendedAttributes entry, the data is found in the next entry.
-                return null;
-            }
-            else
-            {
-                return new SubReadStream(_archive._archiveStream, _header.DataStartPosition, _header.Size);
-            }
+
+            // Entries describing extended attributes should not be exposed to the user
+            Debug.Assert(_header.Format != TarFormat.Pax ||
+                         (_header.Format == TarFormat.Pax && TypeFlag != TarHeader.ExtendedAttributesEntryType));
+
+            return new SubReadStream(_archive._archiveStream, _header.DataStartPosition, _header.Size);
         }
     }
 }
