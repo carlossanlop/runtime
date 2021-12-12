@@ -151,20 +151,38 @@ namespace System.IO.Compression
             long paddingAfterData;
             if (Format is TarFormat.V7 or TarFormat.Ustar)
             {
-                SkipFileDataBlock(archiveStream);
-                paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                if (!TrySkipFileDataBlock(archiveStream))
+                {
+                    return false;
+                }
+                if (!TrySkipBlockAlignmentPadding(archiveStream, out paddingAfterData))
+                {
+                    return false;
+                }
             }
             else if (Format == TarFormat.Pax)
             {
                 if (TypeFlag is TarArchiveEntryType.ExtendedAttributes or TarArchiveEntryType.GlobalExtendedAttributes)
                 {
-                    ExtendedAttributes = ReadPaxExtendedAttributes(archiveStream);
-                    paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                    if (!TryReadPaxExtendedAttributes(archiveStream))
+                    {
+                        return false;
+                    }
+                    if (!TrySkipBlockAlignmentPadding(archiveStream, out paddingAfterData))
+                    {
+                        return false;
+                    }
                 }
                 else
                 {
-                    SkipFileDataBlock(archiveStream);
-                    paddingAfterData = SkipBlockAlignmentPadding(archiveStream);
+                    if (!TrySkipFileDataBlock(archiveStream))
+                    {
+                        return false;
+                    }
+                    if (!TrySkipBlockAlignmentPadding(archiveStream, out paddingAfterData))
+                    {
+                        return false;
+                    }
                 }
             }
             else
@@ -387,52 +405,50 @@ namespace System.IO.Compression
             return true;
         }
 
-        private Dictionary<string, string> ReadPaxExtendedAttributes(Stream archiveStream)
+        private bool TryReadPaxExtendedAttributes(Stream archiveStream)
         {
-            Dictionary<string, string> attributes = new();
-
             int totalBytesRead = 0;
 
-            StringBuilder sb = new();
-            while (totalBytesRead < Size)
+            if (ExtendedAttributes == null)
             {
-                if (!TryGetNextExtendedAttribute(archiveStream, sb, attributes, out int bytesRead))
+                ExtendedAttributes = new();
+            }
+
+            if (!TryReadBytes(archiveStream, Size, out List<byte> byteList))
+            {
+                return false;
+            }
+            if (byteList != null && byteList.Count > 0)
+            {
+                // The PAX attributes data section are saved with UTF8 encoding
+                using StringReader reader = new(Encoding.UTF8.GetString(byteList.ToArray()));
+
+                while (totalBytesRead < Size)
                 {
-                    break;
+                    if (!TryAddNextExtendedAttribute(reader, out int bytesRead))
+                    {
+                        break;
+                    }
+                    totalBytesRead += bytesRead;
                 }
-                totalBytesRead += bytesRead;
+
+                if (totalBytesRead != Size)
+                {
+                    // The reported size for the extended attributes section was incorrect.
+                    return false;
+                }
             }
 
-            if (totalBytesRead != Size)
-            {
-                throw new FormatException("The reported size for the extended attributes section was incorrect."); // TODO
-            }
-
-            return attributes;
+            return true;
         }
 
-        private bool TryGetNextExtendedAttribute(Stream archiveStream, StringBuilder sb, Dictionary<string, string> attributes, out int bytesRead)
+        private bool TryAddNextExtendedAttribute(StringReader reader, out int bytesRead)
         {
+            Debug.Assert(ExtendedAttributes != null);
+
             bytesRead = 0;
-            sb.Clear();
 
-            int b;
-            while ((b = archiveStream.ReadByte()) != -1 && b != '\n')
-            {
-                sb.Append((char)b);
-            }
-
-            if (b == -1)
-            {
-                return false;
-            }
-
-            string nextAttribute = sb.ToString();
-
-            if (nextAttribute == null)
-            {
-                return false;
-            }
+            string? nextAttribute = reader.ReadLine();
 
             if (string.IsNullOrWhiteSpace(nextAttribute))
             {
@@ -456,7 +472,7 @@ namespace System.IO.Compression
                 return false;
             }
 
-            attributes.Add(keyAndValueArray[0], keyAndValueArray[1]);
+            ExtendedAttributes.Add(keyAndValueArray[0], keyAndValueArray[1]);
 
             return true;
         }
@@ -536,48 +552,53 @@ namespace System.IO.Compression
             return offset.DateTime;
         }
 
-
         // After the file contents, there may be zero or more null characters,
         // which exist to ensure the data is aligned to the record size. Skip them and
         // set the stream position to the first byte of the next entry.
-        private long SkipBlockAlignmentPadding(Stream archiveStream)
+        private bool TrySkipBlockAlignmentPadding(Stream archiveStream, out long totalSkipped)
         {
             long ceilingMultipleOfRecordSize = ((TarArchive.RecordSize - 1) | (Size - 1)) + 1;
             int bufferLength = (int)(ceilingMultipleOfRecordSize - Size);
             if (bufferLength > 0)
             {
-                return archiveStream.Read(new byte[bufferLength]);
+                totalSkipped = archiveStream.Read(new byte[bufferLength]);
             }
-            return 0;
+            else
+            {
+                totalSkipped = 0;
+            }
+            return totalSkipped == bufferLength;
         }
 
         // Move the stream position to the first byte after the data ends.
         // TODO: This method should go away after figuring out what to do with the data on unseekable streams.
-        private void SkipFileDataBlock(Stream archiveStream)
+        private bool TrySkipFileDataBlock(Stream archiveStream) => TryReadBytes(archiveStream, Size, out _);
+
+        // TODO: Don't like the list, need to optimize that.
+        private bool TryReadBytes(Stream archiveStream, long bytesToRead, out List<byte> byteList)
         {
-            long bytesToSkip = Size;
-            byte[]? buffer = null;
-            while (bytesToSkip > 0)
+            byteList = new();
+            while (bytesToRead > 0)
             {
-                if (bytesToSkip > int.MaxValue)
+                if (bytesToRead > int.MaxValue)
                 {
-                    if (buffer == null)
-                    {
-                        buffer = new byte[int.MaxValue];
-                    }
+                    byte[] buffer = new byte[int.MaxValue];
                     if (archiveStream.Read(buffer) != int.MaxValue)
                     {
-                        // Reached end of stream
-                        return;
+                        return false; // Reached end of stream
                     }
-                    bytesToSkip -= int.MaxValue;
+                    byteList.AddRange(buffer);
+                    bytesToRead -= int.MaxValue;
                 }
                 else
                 {
-                    archiveStream.Read(new byte[bytesToSkip]);
-                    return;
+                    byte[] buffer = new byte[bytesToRead];
+                    archiveStream.Read(buffer);
+                    byteList.AddRange(buffer);
+                    break;
                 }
             }
+            return true;
         }
     }
 }
