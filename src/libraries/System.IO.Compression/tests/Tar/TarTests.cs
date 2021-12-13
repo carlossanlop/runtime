@@ -22,15 +22,20 @@ namespace System.IO.Compression.Tests
         private const int TestUid = 7913;
         private const int TestGid = 3579;
 
+        private const string CharDevName = "chardev";
         private const int CharDevMajor = 49;
         private const int CharDevMinor = 86;
 
+        private const string BlockDevName = "blockdev";
         private const int BlockDevMajor = 71;
         private const int BlockDevMinor = 53;
+
+        private const string FifoName = "fifofile";
 
         private const string TestCaseHardLink = "file_hardlink";
         private const string TestCaseSymLink = "file_symlink";
         private const string TestCaseFolderSymlinkFolderSubFolderFile = "foldersymlink_folder_subfolder_file";
+        private const string TestCaseSpecialFiles = "specialfiles";
 
         #endregion
 
@@ -200,7 +205,7 @@ namespace System.IO.Compression.Tests
             {
                 yield return item;
             }
-            yield return new object[] { "devices" };
+            yield return new object[] { TestCaseSpecialFiles };
             yield return new object[] { "longpath_splitable_under255" };
         }
 
@@ -301,7 +306,7 @@ namespace System.IO.Compression.Tests
 
             // The 'devices' test case does not have any files in its 'unarchived' folder
             //  because character and block device files cannot be merged to git.
-            if (Path.GetFileName(expectedFilesDir) != "devices")
+            if (Path.GetFileName(expectedFilesDir) != TestCaseSpecialFiles)
             {
                 int expectedEntriesCount = GetExpectedEntriesCount(expectedFilesDir);
                 Assert.Equal(expectedEntriesCount, extractedEntries.Count());
@@ -338,13 +343,19 @@ namespace System.IO.Compression.Tests
                     break;
 
                 case TarArchiveEntryType.Block:
+                    Assert.Equal(BlockDevName, entry.Name);
                     Assert.Equal(BlockDevMajor, entry.DevMajor);
                     Assert.Equal(BlockDevMinor, entry.DevMinor);
                     break;
 
                 case TarArchiveEntryType.Character:
+                    Assert.Equal(CharDevName, entry.Name);
                     Assert.Equal(CharDevMajor, entry.DevMajor);
                     Assert.Equal(CharDevMinor, entry.DevMinor);
+                    break;
+
+                case TarArchiveEntryType.Fifo:
+                    Assert.Equal(FifoName, entry.Name);
                     break;
 
                 // Extended attributes entries should not reach the user
@@ -352,7 +363,7 @@ namespace System.IO.Compression.Tests
                 // Global extended attribute entries are extremely rare, the 'tar' command does not generate them
                 case (TarArchiveEntryType)'g':
                 default:
-                    throw new NotSupportedException($"Entry type: {entry.TypeFlag}");
+                    throw new NotSupportedException($"Unexpected entry type: {entry.TypeFlag}");
             }
         }
 
