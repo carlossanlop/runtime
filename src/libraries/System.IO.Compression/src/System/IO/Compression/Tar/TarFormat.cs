@@ -5,9 +5,10 @@ namespace System.IO.Compression
 {
     public enum TarFormat
     {
-        Unknown,
+        Unknown, // TODO: Do not expose this value
         V7,
         Ustar,
         Pax,
+        Gnu,
     }
 }
