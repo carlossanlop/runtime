@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace System.IO.Compression
 {
@@ -55,6 +56,8 @@ namespace System.IO.Compression
 
             if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, _format, out TarHeader header))
             {
+                Debug.Assert(header.Format != TarFormat.Unknown);
+
                 entry = new TarArchiveEntry(this, header);
                 AddEntry(entry);
                 _lastDataStartPosition = header.DataStartPosition;

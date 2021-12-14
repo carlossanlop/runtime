@@ -18,7 +18,7 @@ namespace System.IO.Compression
         internal byte[] _sizeBytes;
         internal byte[] _mTimeBytes;
         internal byte[] _checksumBytes;
-        internal byte[] _typeFlagBytes;
+        internal byte[] _typeFlagBytes; // TODO: this should just be 1 byte
         internal byte[] _linkNameBytes;
 
         // POSIX and GNU shared attributes
@@ -30,11 +30,27 @@ namespace System.IO.Compression
         internal byte[] _gNameBytes;
         internal byte[] _devMajorBytes;
         internal byte[] _devMinorBytes;
-        internal byte[] _paddingBytes;
+        internal byte[] _paddingBytes; // TODO: This can be removed
 
         // POSIX attributes
 
         internal byte[] _prefixBytes;
+
+        // GNU attributes
+
+        internal byte[] _atimeBytes;
+        internal byte[] _ctimeBytes;
+        internal byte[] _offsetBytes;
+        internal byte[] _longNameBytes;
+        internal byte[] _unusedByte;
+        internal struct Sparse
+        {
+            internal byte[] _offsetBytes;
+            internal byte[] _byteNumberBytes;
+        }
+        internal Sparse[] _sparseItems;
+        internal byte[] _isExtendedByte;
+        internal byte[] _realSizeBytes;
 
         internal bool TryReadCommonAttributeBytes(Stream archiveStream)
         {
@@ -74,7 +90,7 @@ namespace System.IO.Compression
                 return false;
             }
             // Empty checksum means this is an invalid (all blank) entry, finish early
-            if (IsAllZeros(_checksumBytes))
+            if (TarHeader.IsAllZeros(_checksumBytes))
             {
                 return false;
             }
@@ -93,31 +109,19 @@ namespace System.IO.Compression
             return true;
         }
 
-        private bool IsAllZeros(byte[] array)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] != 0)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         internal bool TryReadMagicBytes(Stream archiveStream)
         {
             _magicBytes = new byte[FieldLengths.Magic];
             return archiveStream.Read(_magicBytes.AsSpan()) == FieldLengths.Magic;
         }
+        internal bool TryReadVersionBytes(Stream archiveStream)
+        {
+            _versionBytes = new byte[FieldLengths.Version];
+            return archiveStream.Read(_versionBytes.AsSpan()) == FieldLengths.Version;
+        }
 
         internal bool TryReadPosixAndGnuSharedAttributeBytes(Stream archiveStream)
         {
-            _versionBytes = new byte[FieldLengths.Version];
-            if (archiveStream.Read(_versionBytes) != FieldLengths.Version)
-            {
-                return false;
-            }
             _uNameBytes = new byte[FieldLengths.UName];
             if (archiveStream.Read(_uNameBytes) != FieldLengths.UName)
             {
@@ -142,6 +146,63 @@ namespace System.IO.Compression
             return true;
         }
 
+        internal bool TryReadGnuAttributeBytes(Stream archiveStream)
+        {
+            _atimeBytes = new byte[FieldLengths.ATime];
+            if (archiveStream.Read(_atimeBytes) != FieldLengths.ATime)
+            {
+                return false;
+            }
+            _ctimeBytes = new byte[FieldLengths.CTime];
+            if (archiveStream.Read(_ctimeBytes) != FieldLengths.CTime)
+            {
+                return false;
+            }
+            _offsetBytes = new byte[FieldLengths.Offset];
+            if (archiveStream.Read(_offsetBytes) != FieldLengths.Offset)
+            {
+                return false;
+            }
+            _longNameBytes = new byte[FieldLengths.LongNames];
+            if (archiveStream.Read(_longNameBytes) != FieldLengths.LongNames)
+            {
+                return false;
+            }
+            _unusedByte = new byte[FieldLengths.Unused];
+            if (archiveStream.Read(_unusedByte) != FieldLengths.Unused)
+            {
+                return false;
+            }
+            _sparseItems = new Sparse[FieldLengths.SparseItems];
+
+            for (int i = 0; i < FieldLengths.SparseItems; i++)
+            {
+                _sparseItems[0]._offsetBytes = new byte[FieldLengths.SparseOffset];
+                if (archiveStream.Read(_sparseItems[0]._offsetBytes) != FieldLengths.SparseOffset)
+                {
+                    return false;
+                }
+                _sparseItems[0]._byteNumberBytes = new byte[FieldLengths.SparseByteNumber];
+                if (archiveStream.Read(_sparseItems[0]._byteNumberBytes) != FieldLengths.SparseByteNumber)
+                {
+                    return false;
+                }
+            }
+
+            _isExtendedByte = new byte[FieldLengths.IsExtended];
+            if (archiveStream.Read(_isExtendedByte) != FieldLengths.IsExtended)
+            {
+                return false;
+            }
+            _realSizeBytes = new byte[FieldLengths.RealSize];
+            if (archiveStream.Read(_realSizeBytes) != FieldLengths.RealSize)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         internal bool TryReadPosixPrefixAttributeBytes(Stream archiveStream)
         {
             _prefixBytes = new byte[FieldLengths.Prefix];
@@ -154,8 +215,9 @@ namespace System.IO.Compression
             // V7 padding length.
             TryReadPaddingBytes(archiveStream, FieldLengths.V7Padding - FieldLengths.Magic);
 
-        internal bool TryReadPosixPaddingBytes(Stream archiveStream) =>
-            TryReadPaddingBytes(archiveStream, FieldLengths.PosixPadding);
+        internal bool TryReadPosixPaddingBytes(Stream archiveStream) => TryReadPaddingBytes(archiveStream, FieldLengths.PosixPadding);
+
+        internal bool TryReadGnuPaddingBytes(Stream archiveStream) => TryReadPaddingBytes(archiveStream, FieldLengths.GnuPadding);
 
         private bool TryReadPaddingBytes(Stream archiveStream, ushort length)
         {
@@ -192,10 +254,24 @@ namespace System.IO.Compression
 
             internal const ushort Prefix = 155;
 
+            // GNU attributes
+
+            internal const ushort ATime = 12;
+            internal const ushort CTime = 12;
+            internal const ushort Offset = 12;
+            internal const ushort LongNames = 4;
+            internal const ushort Unused = 1;
+            internal const ushort SparseItems = 4;
+            internal const ushort SparseOffset = 12;
+            internal const ushort SparseByteNumber = 12;
+            internal const ushort IsExtended = 1;
+            internal const ushort RealSize = 12;
+
             // Padding lengths depending on format
 
             internal const ushort V7Padding = 255;
             internal const ushort PosixPadding = 12;
+            internal const ushort GnuPadding = 17;
         }
     }
 }
