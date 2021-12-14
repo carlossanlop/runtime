@@ -166,6 +166,20 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
+        #region Old Gnu
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Uncompressed_OldGnu_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Gzip_OldGnu_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
+
+        #endregion
+
         #region Data
 
         public static IEnumerable<object[]> Normal_FilesAndFolders_V7_Data()
@@ -219,6 +233,7 @@ namespace System.IO.Compression.Tests
             ustar,
             pax,
             pax_gea,
+            oldgnu,
             gnu
         }
 

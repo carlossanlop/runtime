@@ -95,6 +95,20 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
+        #region Old Gnu
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_OldGnu_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Ustar_OldGnu_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
+
+        #endregion
+
         #region Helpers
 
         private void GenerateExpectedFilesAndCompare(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
