@@ -189,6 +189,38 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
+        #region Gnu Uncompressed
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Uncompressed_Gnu_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Gnu, testCaseName);
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_Gnu_Links(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Gnu, testCaseName);
+
+        #endregion
+
+        #region Gnu GZip
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Gzip_Gnu_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Gnu, testCaseName);
+
+        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Gnu_Links(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Gnu, testCaseName);
+
+        #endregion
+
         #region Data
 
         public static IEnumerable<object[]> Normal_FilesAndFolders_V7_Data()
