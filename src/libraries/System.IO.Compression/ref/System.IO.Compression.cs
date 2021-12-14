@@ -124,7 +124,9 @@ namespace System.IO.Compression
         Block = '4',
         Directory = '5',
         Fifo = '6',
-        Contiguous = '7',
+        DirectoryEntry = 'D',
+        LongLink = 'K',
+        LongPath = 'L',
     }
     public enum TarArchiveMode
     {
@@ -136,6 +138,7 @@ namespace System.IO.Compression
         V7,
         Ustar,
         Pax,
+        Gnu,
     }
     public class TarOptions
     {
