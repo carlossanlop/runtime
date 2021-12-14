@@ -5,66 +5,108 @@ using Xunit;
 
 namespace System.IO.Compression.Tests
 {
+    // Tests that manually create expected files.
+    // These test methods are a workaround for the nupkg bug preventing the
+    // correct extraction of symlink and hardlink files into disk.
     public partial class TarTests : FileCleanupTestBase
     {
-        #region Tests that manually create expected files
-
-        // Workaround for 'Read_Uncompressed_V7_Links'
+        // 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_V7_Links_ManuallyCreated(string testCaseName)
+        public void Read_Links(string testCaseName)
         {
-            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
-
-            CompareTarFileContentsWithDirectoryContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName),
-                tmpDir.Path);
+            foreach (CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>())
+            {
+                foreach (TestTarFormat format in Enum.GetValues<TestTarFormat>())
+                {
+                    VerifyTarFileContents(compressionMethod, format, testCaseName);
+                }
+            }
         }
 
-        // Workaround for 'Read_Gzip_V7_Links'
+        #region V7
+
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_V7_Links_ManuallyCreated(string testCaseName)
-        {
-            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+        public void Read_Uncompressed_V7_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.v7, testCaseName);
 
-            CompareTarFileContentsWithDirectoryContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.V7, testCaseName),
-                tmpDir.Path);
-        }
-
-
-        // Workaround for 'Read_Uncompressed_Ustar_Links'
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Ustar_Links_ManuallyCreated(string testCaseName)
-        {
-            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+        public void Read_Gzip_V7_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.v7, testCaseName);
 
-            CompareTarFileContentsWithDirectoryContents(
-                CompressionMethod.Uncompressed,
-                GetTarFile(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName),
-                tmpDir.Path);
-        }
+        #endregion
 
-        // Workaround for 'Read_Gzip_Ustar_Links'
+        #region Ustar
+
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_Links_ManuallyCreated(string testCaseName)
-        {
-            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+        public void Read_Uncompressed_Ustar_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.ustar, testCaseName);
 
-            CompareTarFileContentsWithDirectoryContents(
-                CompressionMethod.GZip,
-                GetTarFile(CompressionMethod.GZip, TarFormat.Ustar, testCaseName),
-                tmpDir.Path);
-        }
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Ustar_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.ustar, testCaseName);
+
+        #endregion
+
+        #region Pax
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_Pax_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Ustar_Pax_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
+
+        #endregion
+
+        #region Pax with Global Extended Attributes
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_PaxGEA_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Ustar_PaxGEA_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
+
+        #endregion
+
+        #region Gnu
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Uncompressed_Gnu_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_Data))]
+        public void Read_Gzip_Ustar_Gnu_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
 
         #endregion
 
         #region Helpers
+
+        private void GenerateExpectedFilesAndCompare(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
+        {
+            using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
+
+            CompareTarFileContentsWithDirectoryContents(
+                compressionMethod,
+                format,
+                GetTarFile(compressionMethod, format, testCaseName),
+                tmpDir.Path);
+        }
 
         private TempDirectory GenerateExpectedLinkFilesAndFolders(string testCaseName)
         {

@@ -37,6 +37,9 @@ namespace System.IO.Compression.Tests
         private const string TestCaseFolderSymlinkFolderSubFolderFile = "foldersymlink_folder_subfolder_file";
         private const string TestCaseSpecialFiles = "specialfiles";
 
+        private const string TestGlobalExtendedAttributeKey = "globexthdr.MyGlobalExtendedAttribute";
+        private const string TestGlobalExtendedAttributeValue = "hello";
+
         #endregion
 
         #region Basic validation
@@ -93,131 +96,73 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
-        #region V7 Uncompressed
+        #region V7
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Uncompressed_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_V7_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.V7, testCaseName);
-
-        #endregion
-
-        #region V7 GZip
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.v7, testCaseName);
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
         public void Read_Gzip_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.V7, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_V7_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.V7, testCaseName);
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.v7, testCaseName);
 
         #endregion
 
-        #region Ustar Uncompressed
+        #region Ustar
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Ustar_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Ustar, testCaseName);
-
-        #endregion
-
-        #region Ustar GZip
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.ustar, testCaseName);
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
         public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Ustar, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Ustar, testCaseName);
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.ustar, testCaseName);
 
         #endregion
 
-        #region Pax Uncompressed
+        #region Pax
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Uncompressed_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Pax_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Pax, testCaseName);
-
-        #endregion
-
-        #region Pax GZip
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Gzip_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Pax, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Pax_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Pax, testCaseName);
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
 
         #endregion
 
-        #region Gnu Uncompressed
+        #region Pax with Global Extended Attributes
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Uncompressed_PaxGEA_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
+        public void Read_Gzip_PaxGEA_NormalFilesAndFolders(string testCaseName) =>
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
+
+        #endregion
+
+        #region Gnu
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Uncompressed_Gnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Gnu, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Gnu_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TarFormat.Gnu, testCaseName);
-
-        #endregion
-
-        #region Gnu GZip
+            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
 
         [Theory]
         [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
         public void Read_Gzip_Gnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Gnu, testCaseName);
-
-        // dotnet restore extracts nupkg symlinks and hardlinks as normal files/folders
-        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Gnu_Links(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TarFormat.Gnu, testCaseName);
+            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
 
         #endregion
 
@@ -268,7 +213,16 @@ namespace System.IO.Compression.Tests
             GZip,
         }
 
-        protected static string GetTarFile(CompressionMethod compressionMethod, TarFormat format, string testCaseName)
+        protected enum TestTarFormat
+        {
+            v7,
+            ustar,
+            pax,
+            pax_gea,
+            gnu
+        }
+
+        protected static string GetTarFile(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
         {
             (string compressionMethodFolder, string fileExtension) = compressionMethod switch
             {
@@ -277,47 +231,45 @@ namespace System.IO.Compression.Tests
                 _ => throw new NotSupportedException(),
             };
 
-            string formatFolder = format.ToString().ToLowerInvariant();
-
-            return Path.Join(Directory.GetCurrentDirectory(), "TarTestData", compressionMethodFolder, formatFolder, testCaseName + fileExtension);
+            return Path.Join(Directory.GetCurrentDirectory(), "TarTestData", compressionMethodFolder, format.ToString(), testCaseName + fileExtension);
         }
 
         private static string GetTestCaseFolderPath(string testCaseName) =>
             Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
 
-        protected void CompareTarFileContentsWithDirectoryContents(CompressionMethod compressionMethod, string tarFilePath, string expectedFilesDir)
+        protected void CompareTarFileContentsWithDirectoryContents(CompressionMethod compressionMethod, TestTarFormat format, string tarFilePath, string expectedFilesDir)
         {
             using FileStream fs = File.Open(tarFilePath, FileMode.Open);
 
             switch (compressionMethod)
             {
                 case CompressionMethod.Uncompressed:
-                    VerifyUncompressedTarStreamContents(fs, expectedFilesDir);
+                    VerifyUncompressedTarStreamContents(fs, format, expectedFilesDir);
                     break;
 
                 case CompressionMethod.GZip:
                     using (var decompressor = new GZipStream(fs, CompressionMode.Decompress))
                     {
-                        VerifyUncompressedTarStreamContents(decompressor, expectedFilesDir);
+                        VerifyUncompressedTarStreamContents(decompressor, format, expectedFilesDir);
                     }
-                   break;
+                    break;
 
                 default:
                     throw new NotSupportedException();
             }
         }
 
-        private void VerifyTarFileContents(CompressionMethod compressionMethod, TarFormat format, string testCaseName)
+        private void VerifyTarFileContents(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
         {
             string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
             string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
 
-            CompareTarFileContentsWithDirectoryContents(compressionMethod, tarFilePath, expectedFilesDir);
+            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, expectedFilesDir);
         }
 
         // Reads the contents of a stream wrapping an uncompressed tar archive, then compares
         // the entries with the filesystem entries found in the specified folder path.
-        private void VerifyUncompressedTarStreamContents(Stream tarStream, string expectedFilesDir)
+        private void VerifyUncompressedTarStreamContents(Stream tarStream, TestTarFormat format, string expectedFilesDir)
         {
             TarOptions options = new() { Mode = TarArchiveMode.Read };
             using var archive = new TarArchive(tarStream, options);
@@ -329,30 +281,30 @@ namespace System.IO.Compression.Tests
                 extractedEntries.Add(entry);
             }
 
-            Assert.NotEqual(TarFormat.Unknown, archive.Format);
-
             foreach (TarArchiveEntry extractedEntry in extractedEntries)
             {
-                VerifyEntry(extractedEntry, archive.Format, expectedFilesDir);
+                VerifyEntry(extractedEntry, format, expectedFilesDir);
             }
 
-            // The 'devices' test case does not have any files in its 'unarchived' folder
-            //  because character and block device files cannot be merged to git.
-            if (Path.GetFileName(expectedFilesDir) != TestCaseSpecialFiles)
-            {
-                int expectedEntriesCount = GetExpectedEntriesCount(expectedFilesDir);
-                Assert.Equal(expectedEntriesCount, extractedEntries.Count());
-            }
-            // TODO: Add verification of total number of entries for 'devices' (there are more in pax)
+            // The 'special files' test case does not have any files in its 'unarchived' folder
+            // because character devices, block devices and fifo files cannot be merged to git.
+            // Hence why for this test case the number is hardcoded: we expect one of each special file.
+            int expectedEntriesCount = Path.GetFileName(expectedFilesDir) == TestCaseSpecialFiles ? 3 : GetExpectedEntriesCount(expectedFilesDir);
+            Assert.Equal(expectedEntriesCount, extractedEntries.Count());
         }
 
-        private void VerifyEntry(TarArchiveEntry entry, TarFormat format, string expectedFilesDir)
+        private void VerifyEntry(TarArchiveEntry entry, TestTarFormat format, string expectedFilesDir)
         {
             Assert.NotEmpty(entry.Name);
             string fullPath = Path.GetFullPath(Path.Join(expectedFilesDir, entry.Name));
             string? linkTargetFullPath = !string.IsNullOrEmpty(entry.LinkName) ? Path.GetFullPath(Path.Join(expectedFilesDir, entry.LinkName)) : null;
 
-            VerifyEntryPermissions(format, entry);
+            if (format == TestTarFormat.pax_gea)
+            {
+                VerifyPaxGlobalExtendedAttributes(entry);
+            }
+
+            VerifyEntryOwnershipAndPermissions(format, entry);
 
             switch (entry.TypeFlag)
             {
@@ -390,16 +342,19 @@ namespace System.IO.Compression.Tests
                     Assert.Equal(FifoName, entry.Name);
                     break;
 
-                // Extended attributes entries should not reach the user
-                case (TarArchiveEntryType)'x':
-                // Global extended attribute entries are extremely rare, the 'tar' command does not generate them
-                case (TarArchiveEntryType)'g':
                 default:
                     throw new NotSupportedException($"Unexpected entry type: {entry.TypeFlag}");
             }
         }
 
-        private void VerifyEntryPermissions(TarFormat format, TarArchiveEntry entry)
+        private void VerifyPaxGlobalExtendedAttributes(TarArchiveEntry entry)
+        {
+            Assert.NotNull(entry.ExtendedAttributes);
+            Assert.True(entry.ExtendedAttributes.ContainsKey(TestGlobalExtendedAttributeKey));
+            Assert.Equal(TestGlobalExtendedAttributeValue, entry.ExtendedAttributes[TestGlobalExtendedAttributeKey]);
+        }
+
+        private void VerifyEntryOwnershipAndPermissions(TestTarFormat format, TarArchiveEntry entry)
         {
             // Skip checking mode of a symbolic link. From 'man chmod':
             // "chmod never changes the permissions of symbolic links; the chmod system call cannot change their
@@ -416,8 +371,8 @@ namespace System.IO.Compression.Tests
 
             switch (format)
             {
-                case TarFormat.V7:
-                    // Fields aren't supported in this format
+                case TestTarFormat.v7:
+                    // GName and Uname aren't supported in this format.
                     Assert.Null(entry.UName);
                     Assert.Null(entry.GName);
                     break;
