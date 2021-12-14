@@ -17,6 +17,8 @@ namespace System.IO.Compression
         private const string GnuVersion = " \0";
 
         internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
+        internal const TarArchiveEntryType GlobalExtendedAttributesEntryType = (TarArchiveEntryType)'g';
+
         internal TarFormat Format { get; set; }
         internal long DataStartPosition { get; private set; }
 
@@ -92,7 +94,6 @@ namespace System.IO.Compression
                         return false;
                     }
 
-                    // Nothing to replace from a DirectoryEntry entry
                     if (header.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
                     {
                         nextHeader.ReplaceNormalAttributesWithGnuPrefixEntry(header);
@@ -202,7 +203,7 @@ namespace System.IO.Compression
             }
             else if (Format == TarFormat.Pax)
             {
-                if (TypeFlag is ExtendedAttributesEntryType)
+                if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
                 {
                     if (!TryReadPaxExtendedAttributes(archiveStream))
                     {
@@ -353,7 +354,7 @@ namespace System.IO.Compression
 
             if (Format == TarFormat.Unknown)
             {
-                if (TypeFlag == ExtendedAttributesEntryType)
+                if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
                 {
                     Format = TarFormat.Pax;
                 }

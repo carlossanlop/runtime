@@ -16,6 +16,8 @@ namespace System.IO.Compression
         private bool _isDisposed;
         private long _lastDataStartPosition;
 
+        internal Dictionary<string, string>? _globalExtendedAttributes;
+
         public TarFormat Format => _format;
 
         public TarOptions Options { get; }
@@ -43,6 +45,7 @@ namespace System.IO.Compression
 
             _archiveStream = stream;
             _lastDataStartPosition = 0;
+            _globalExtendedAttributes = null;
 
             // The real format is set after reading the first entry
             _format = TarFormat.Unknown;
@@ -54,22 +57,11 @@ namespace System.IO.Compression
 
             TarArchiveEntry? entry = null;
 
-            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, _format, out TarHeader header))
+            if (TryGetNextHeader(out TarHeader header))
             {
-                Debug.Assert(header.Format != TarFormat.Unknown);
-
                 entry = new TarArchiveEntry(this, header);
+                UpdateExtendedAttributesIfNeeded(entry);
                 AddEntry(entry);
-                _lastDataStartPosition = header.DataStartPosition;
-
-                if (_format == TarFormat.Unknown)
-                {
-                    _format = header.Format;
-                }
-                else if (header.Format != _format)
-                {
-                    throw new FormatException("The archive contains entries in different tar formats."); // TODO
-                }
             }
 
             return entry;
@@ -105,6 +97,76 @@ namespace System.IO.Compression
             if (_isDisposed)
             {
                 throw new ObjectDisposedException(GetType().ToString());
+            }
+        }
+
+        private bool TryGetNextHeader(out TarHeader header)
+        {
+            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, _format, out header))
+            {
+                if (header.Format == TarFormat.Pax &&
+                    header.TypeFlag == TarHeader.GlobalExtendedAttributesEntryType)
+                {
+                    // A PAX global extended attributes entry needs to be analyzer for its attributes section,
+                    // but we should not return its header; instead, we return the next one.
+
+                    // We should not expect two 'g' entries
+                    Debug.Assert(_globalExtendedAttributes == null);
+
+                    // Retrieving the global attributes is all we care about from a 'g' entry.
+                    _globalExtendedAttributes = header.ExtendedAttributes;
+
+                    if (TarHeader.TryGetNextHeader(_archiveStream, header.DataStartPosition, _format, out header))
+                    {
+                        UpdateArchiveFormatAndStreamPosition(header);
+                        return true;
+                    }
+                }
+                else
+                {
+                    UpdateArchiveFormatAndStreamPosition(header);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void UpdateArchiveFormatAndStreamPosition(TarHeader header)
+        {
+            Debug.Assert(header.Format != TarFormat.Unknown);
+            if (_format == TarFormat.Unknown)
+            {
+                _format = header.Format;
+            }
+            else if (header.Format != _format)
+            {
+                throw new FormatException("The archive contains entries in different tar formats."); // TODO
+            }
+            _lastDataStartPosition = header.DataStartPosition;
+        }
+
+        private void UpdateExtendedAttributesIfNeeded(TarArchiveEntry entry)
+        {
+            if (_globalExtendedAttributes != null)
+            {
+                if (entry._header.ExtendedAttributes == null)
+                {
+                    entry._header.ExtendedAttributes = _globalExtendedAttributes;
+                }
+                else
+                {
+                    foreach ((string key, string value) in _globalExtendedAttributes)
+                    {
+                        if (entry._header.ExtendedAttributes.ContainsKey(key))
+                        {
+                            entry._header.ExtendedAttributes[key] = value;
+                        }
+                        else
+                        {
+                            entry._header.ExtendedAttributes.Add(key, value);
+                        }
+                    }
+                }
             }
         }
     }

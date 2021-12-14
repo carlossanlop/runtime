@@ -18,12 +18,11 @@ namespace System.IO.Compression
         LongPath = 'L',
 
         // PAX entry types that need to be handled internally:
-        // - Reserved: 7 - should be treated as 0.
         // - Extended attributes: x
         // - Global extended attributes: g
 
         // GNU entry types currently not implemented/supported:
-        // - Contiguous file: 7 - should be treated as 0, it's extremely rare.
+        // - Contiguous file: 7 - should be treated as 0, it's extremely rare to handle it as contiguous.
         // - Multi-volume file: M
         // - File to be renamed/symlinked: N - unsafe and already ignored by other tools.
         // - Sparse regular file: S

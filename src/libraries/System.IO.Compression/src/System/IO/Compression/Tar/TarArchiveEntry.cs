@@ -10,7 +10,7 @@ namespace System.IO.Compression
     public class TarArchiveEntry
     {
         private TarArchive? _archive;
-        private TarHeader _header;
+        internal TarHeader _header;
         internal MemoryStream? _stream;
 
         public int Checksum => _header.Checksum;
