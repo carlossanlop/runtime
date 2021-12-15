@@ -104,7 +104,7 @@ namespace System.IO.Compression.Tests
 
             using FileStream fs = File.Open(tarFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using WrappedStream stream = new(fs, canRead: true, canWrite: false, canSeek: false, null);
-            VerifyUncompressedTarStreamContents(stream, format, expectedFilesDir);
+            VerifyUncompressedTarStreamContents(stream, format, expectedFilesDir, testCaseName);
         }
 
         #endregion
@@ -265,20 +265,20 @@ namespace System.IO.Compression.Tests
         private static string GetTestCaseFolderPath(string testCaseName) =>
             Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
 
-        protected void CompareTarFileContentsWithDirectoryContents(CompressionMethod compressionMethod, TestTarFormat format, string tarFilePath, string expectedFilesDir)
+        protected void CompareTarFileContentsWithDirectoryContents(CompressionMethod compressionMethod, TestTarFormat format, string tarFilePath, string expectedFilesDir, string testCaseName)
         {
             using FileStream fs = File.Open(tarFilePath, FileMode.Open);
 
             switch (compressionMethod)
             {
                 case CompressionMethod.Uncompressed:
-                    VerifyUncompressedTarStreamContents(fs, format, expectedFilesDir);
+                    VerifyUncompressedTarStreamContents(fs, format, expectedFilesDir, testCaseName);
                     break;
 
                 case CompressionMethod.GZip:
                     using (var decompressor = new GZipStream(fs, CompressionMode.Decompress))
                     {
-                        VerifyUncompressedTarStreamContents(decompressor, format, expectedFilesDir);
+                        VerifyUncompressedTarStreamContents(decompressor, format, expectedFilesDir, testCaseName);
                     }
                     break;
 
@@ -292,12 +292,12 @@ namespace System.IO.Compression.Tests
             string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
             string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
 
-            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, expectedFilesDir);
+            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, expectedFilesDir, testCaseName);
         }
 
         // Reads the contents of a stream wrapping an uncompressed tar archive, then compares
         // the entries with the filesystem entries found in the specified folder path.
-        private void VerifyUncompressedTarStreamContents(Stream tarStream, TestTarFormat format, string expectedFilesDir)
+        private void VerifyUncompressedTarStreamContents(Stream tarStream, TestTarFormat format, string expectedFilesDir, string testCaseName)
         {
             TarOptions options = new() { Mode = TarArchiveMode.Read };
             using var archive = new TarArchive(tarStream, options);
@@ -311,7 +311,7 @@ namespace System.IO.Compression.Tests
 
             foreach (TarArchiveEntry extractedEntry in extractedEntries)
             {
-                VerifyEntry(extractedEntry, format, expectedFilesDir);
+                VerifyEntry(extractedEntry, format, expectedFilesDir, testCaseName);
             }
 
             // The 'special files' test case does not have any files in its 'unarchived' folder
@@ -321,7 +321,7 @@ namespace System.IO.Compression.Tests
             Assert.Equal(expectedEntriesCount, extractedEntries.Count());
         }
 
-        private void VerifyEntry(TarArchiveEntry entry, TestTarFormat format, string expectedFilesDir)
+        private void VerifyEntry(TarArchiveEntry entry, TestTarFormat format, string expectedFilesDir, string testCaseName)
         {
             Assert.NotEmpty(entry.Name);
             string fullPath = Path.GetFullPath(Path.Join(expectedFilesDir, entry.Name));
@@ -334,51 +334,71 @@ namespace System.IO.Compression.Tests
 
             VerifyEntryOwnershipAndPermissions(format, entry);
 
+            Stream? dataStream = entry.Open();
+
             switch (entry.TypeFlag)
             {
                 case TarArchiveEntryType.OldNormal:
                 case TarArchiveEntryType.Normal:
                     Assert.True(File.Exists(fullPath), $"File does not exist: {fullPath}");
+                    Assert.NotNull(dataStream);
                     break;
 
                 case TarArchiveEntryType.Link:
                     VerifyHardLinkEntry(entry, fullPath, linkTargetFullPath);
+                    Assert.Null(dataStream);
                     break;
 
                 case TarArchiveEntryType.Directory:
                     Assert.True(Directory.Exists(fullPath), $"Directory does not exist: {fullPath}");
+                    Assert.Null(dataStream);
                     break;
 
                 case TarArchiveEntryType.SymbolicLink:
                     Assert.NotEmpty(entry.LinkName);
                     VerifySymbolicLinkEntry(link: fullPath, target: linkTargetFullPath);
+                    Assert.Null(dataStream);
                     break;
 
                 case TarArchiveEntryType.Block:
                     Assert.Equal(BlockDevName, entry.Name);
                     Assert.Equal(BlockDevMajor, entry.DevMajor);
                     Assert.Equal(BlockDevMinor, entry.DevMinor);
+                    Assert.Null(dataStream);
                     break;
 
                 case TarArchiveEntryType.Character:
                     Assert.Equal(CharDevName, entry.Name);
                     Assert.Equal(CharDevMajor, entry.DevMajor);
                     Assert.Equal(CharDevMinor, entry.DevMinor);
+                    Assert.Null(dataStream);
                     break;
 
                 case TarArchiveEntryType.Fifo:
                     Assert.Equal(FifoName, entry.Name);
+                    Assert.Null(dataStream);
                     break;
 
+                // TODO: Do not expose these entry types, convert them to their simple version
+                case TarArchiveEntryType.DirectoryEntry:
+                case TarArchiveEntryType.LongLink:
+                case TarArchiveEntryType.LongPath:
                 default:
                     throw new NotSupportedException($"Unexpected entry type: {entry.TypeFlag}");
+            }
+
+            if (dataStream != null)
+            {
+                using StreamReader reader = new(dataStream);
+                string line = reader.ReadLine();
+                Assert.Equal($"Hello {testCaseName}", line);
             }
         }
 
         private void VerifyPaxGlobalExtendedAttributes(TarArchiveEntry entry)
         {
             Assert.NotNull(entry.ExtendedAttributes);
-            Assert.True(entry.ExtendedAttributes.ContainsKey(TestGlobalExtendedAttributeKey));
+            Assert.True(entry.ExtendedAttributes.ContainsKey(TestGlobalExtendedAttributeKey), $"Global extended attribute not found in entry '{entry.Name}'");
             Assert.Equal(TestGlobalExtendedAttributeValue, entry.ExtendedAttributes[TestGlobalExtendedAttributeKey]);
         }
 

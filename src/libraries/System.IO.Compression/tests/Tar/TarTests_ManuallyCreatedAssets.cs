@@ -114,12 +114,8 @@ namespace System.IO.Compression.Tests
         private void GenerateExpectedFilesAndCompare(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
         {
             using TempDirectory tmpDir = GenerateExpectedLinkFilesAndFolders(testCaseName);
-
-            CompareTarFileContentsWithDirectoryContents(
-                compressionMethod,
-                format,
-                GetTarFile(compressionMethod, format, testCaseName),
-                tmpDir.Path);
+            string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
+            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, tmpDir.Path, testCaseName);
         }
 
         private TempDirectory GenerateExpectedLinkFilesAndFolders(string testCaseName)
