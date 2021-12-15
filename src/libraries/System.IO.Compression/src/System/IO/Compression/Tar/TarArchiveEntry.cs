@@ -69,11 +69,22 @@ namespace System.IO.Compression
                 throw new InvalidDataException(SR.NotSupported_UnreadableStream);
             }
 
-            // Entries describing extended attributes should not be exposed to the user
-            Debug.Assert(_header.Format != TarFormat.Pax ||
-                         (_header.Format == TarFormat.Pax && TypeFlag != TarHeader.ExtendedAttributesEntryType));
+            switch (TypeFlag)
+            {
+                case TarArchiveEntryType.OldNormal:
+                case TarArchiveEntryType.Normal:
+                    {
+                        Debug.Assert(_header._dataStream != null);
+                        Debug.Assert(_header._dataStream.CanSeek);
 
-            return new SubReadStream(_archive._archiveStream, _header.DataStartPosition, _header.Size);
+                        _header._dataStream.Seek(0, SeekOrigin.Begin);
+                        return _header._dataStream;
+                    }
+                default:
+                    break;
+            }
+
+            return null;
         }
     }
 }

@@ -14,7 +14,6 @@ namespace System.IO.Compression
         private Dictionary<int, TarArchiveEntry>? _entries;
         private TarFormat _format;
         private bool _isDisposed;
-        private long _lastDataStartPosition;
 
         internal Dictionary<string, string>? _globalExtendedAttributes;
 
@@ -44,10 +43,7 @@ namespace System.IO.Compression
             }
 
             _archiveStream = stream;
-            _lastDataStartPosition = 0;
             _globalExtendedAttributes = null;
-
-            // The real format is set after reading the first entry
             _format = TarFormat.Unknown;
         }
 
@@ -60,7 +56,7 @@ namespace System.IO.Compression
             if (TryGetNextHeader(out TarHeader header))
             {
                 entry = new TarArchiveEntry(this, header);
-                UpdateExtendedAttributesIfNeeded(entry);
+                OverwriteExtendedAttributesWithGlobalIfNeeded(entry);
                 AddEntry(entry);
             }
 
@@ -102,12 +98,12 @@ namespace System.IO.Compression
 
         private bool TryGetNextHeader(out TarHeader header)
         {
-            if (TarHeader.TryGetNextHeader(_archiveStream, _lastDataStartPosition, _format, out header))
+            if (TarHeader.TryGetNextHeader(_archiveStream, _format, out header))
             {
                 if (header.Format == TarFormat.Pax &&
                     header.TypeFlag == TarHeader.GlobalExtendedAttributesEntryType)
                 {
-                    // A PAX global extended attributes entry needs to be analyzer for its attributes section,
+                    // A PAX global extended attributes entry needs to be analyzed for its attributes section,
                     // but we should not return its header; instead, we return the next one.
 
                     // We should not expect two 'g' entries
@@ -116,7 +112,7 @@ namespace System.IO.Compression
                     // Retrieving the global attributes is all we care about from a 'g' entry.
                     _globalExtendedAttributes = header.ExtendedAttributes;
 
-                    if (TarHeader.TryGetNextHeader(_archiveStream, header.DataStartPosition, _format, out header))
+                    if (TarHeader.TryGetNextHeader(_archiveStream, _format, out header))
                     {
                         UpdateArchiveFormatAndStreamPosition(header);
                         return true;
@@ -142,10 +138,9 @@ namespace System.IO.Compression
             {
                 throw new FormatException("The archive contains entries in different tar formats."); // TODO
             }
-            _lastDataStartPosition = header.DataStartPosition;
         }
 
-        private void UpdateExtendedAttributesIfNeeded(TarArchiveEntry entry)
+        private void OverwriteExtendedAttributesWithGlobalIfNeeded(TarArchiveEntry entry)
         {
             if (_globalExtendedAttributes != null)
             {
@@ -157,13 +152,9 @@ namespace System.IO.Compression
                 {
                     foreach ((string key, string value) in _globalExtendedAttributes)
                     {
-                        if (entry._header.ExtendedAttributes.ContainsKey(key))
+                        if (!entry._header.ExtendedAttributes.TryAdd(key, value))
                         {
                             entry._header.ExtendedAttributes[key] = value;
-                        }
-                        else
-                        {
-                            entry._header.ExtendedAttributes.Add(key, value);
                         }
                     }
                 }

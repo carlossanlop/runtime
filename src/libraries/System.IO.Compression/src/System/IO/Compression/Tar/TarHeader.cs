@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -19,8 +20,9 @@ namespace System.IO.Compression
         internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
         internal const TarArchiveEntryType GlobalExtendedAttributesEntryType = (TarArchiveEntryType)'g';
 
+        internal Stream? _dataStream;
+
         internal TarFormat Format { get; set; }
-        internal long DataStartPosition { get; private set; }
 
         // Common attributes
 
@@ -50,7 +52,7 @@ namespace System.IO.Compression
         // PAX extended attributes
         internal Dictionary<string, string>? ExtendedAttributes;
 
-        internal static bool TryGetNextHeader(Stream archiveStream, long lastDataStartPosition, TarFormat currentArchiveFormat, out TarHeader header)
+        internal static bool TryGetNextHeader(Stream archiveStream, TarFormat currentArchiveFormat, out TarHeader header)
         {
             header = default;
 
@@ -60,21 +62,21 @@ namespace System.IO.Compression
             // multiple incompatible entries in the same archive is not expected.
             header.Format = currentArchiveFormat;
 
-            if (!header.TryReadAttributes(archiveStream, lastDataStartPosition))
+            if (!header.TryReadAttributes(archiveStream))
             {
                 return false;
             }
 
             if (header.Format == TarFormat.Pax)
             {
-                // If the current header type represents extended attributes, then the actual header we
-                // need to return is the next one, but with its normal attributes replaced with the ones
-                // found in the current header's extended attributes.
+                // If the current header type represents extended attributes 'x', then the actual header
+                // we need to return is the next one, but with its normal attributes replaced with the
+                // ones found in the current entry.
                 if (header.TypeFlag == ExtendedAttributesEntryType)
                 {
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Pax;
-                    if (!nextHeader.TryReadAttributes(archiveStream, header.DataStartPosition))
+                    if (!nextHeader.TryReadAttributes(archiveStream))
                     {
                         return false;
                     }
@@ -89,14 +91,14 @@ namespace System.IO.Compression
                 {
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Gnu;
-                    if (!nextHeader.TryReadAttributes(archiveStream, header.DataStartPosition))
+                    if (!nextHeader.TryReadAttributes(archiveStream))
                     {
                         return false;
                     }
 
                     if (header.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
                     {
-                        nextHeader.ReplaceNormalAttributesWithGnuPrefixEntry(header);
+                        nextHeader.ReplaceGnuPaths(header);
                     }
                     header = nextHeader;
                 }
@@ -105,7 +107,7 @@ namespace System.IO.Compression
             return true;
         }
 
-        private bool TryReadAttributes(Stream archiveStream, long lastDataStartPosition)
+        private bool TryReadAttributes(Stream archiveStream)
         {
             _rawHeader = default;
             // Confirms if v7 or pax, or tentatively selects ustar
@@ -193,62 +195,8 @@ namespace System.IO.Compression
                 }
             }
 
-            // Read the data or extended attributes section
-            if (Format is TarFormat.V7 or TarFormat.Ustar)
-            {
-                if (!TrySkipFileDataBlock(archiveStream))
-                {
-                    return false;
-                }
-            }
-            else if (Format == TarFormat.Pax)
-            {
-                if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
-                {
-                    if (!TryReadPaxExtendedAttributes(archiveStream))
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    if (!TrySkipFileDataBlock(archiveStream))
-                    {
-                        return false;
-                    }
-                }
-            }
-            else if (Format == TarFormat.Gnu)
-            {
-                if (TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
-                {
-                    if (!TryReadGnuLongPathDataBlock(archiveStream))
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    if (!TrySkipFileDataBlock(archiveStream))
-                    {
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                throw new NotSupportedException("Unsupported format.");
-            }
-
-            if (!TrySkipBlockAlignmentPadding(archiveStream, out long paddingAfterData))
-            {
-                return false;
-            }
-
-            DataStartPosition = lastDataStartPosition +
-                TarArchive.RecordSize + // normal attributes
-                Size +                  // either data or extended attributes
-                paddingAfterData;       // block alignment space
+            ProcessDataBlock(archiveStream);
+            SkipBlockAlignmentPadding(archiveStream);
 
             return true;
         }
@@ -494,89 +442,54 @@ namespace System.IO.Compression
             return true;
         }
 
-        private bool TryReadPaxExtendedAttributes(Stream archiveStream)
+        private void ReadPaxExtendedAttributes(Stream archiveStream)
         {
-            int totalBytesRead = 0;
+            if (Size > 0)
+            {
+                // Highly doubtful that a long path will be longer than int.MaxValue.
+                Debug.Assert(Size <= int.MaxValue);
 
-            if (ExtendedAttributes == null)
-            {
-                ExtendedAttributes = new();
-            }
+                ExtendedAttributes ??= new();
 
-            if (!TryReadBytes(archiveStream, Size, out List<byte> byteList))
-            {
-                return false;
-            }
-            if (byteList != null && byteList.Count > 0)
-            {
+                // Also advances the archive stream
+                //using Stream stream = CopyDataToNewStream(archiveStream, Size);
+                byte[] buffer = new byte[(int)Size];
+
+                if (archiveStream.Read(buffer.AsSpan()) != Size)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                string longPath = GetTrimmedUtf8String(buffer);
+
                 // The PAX attributes data section are saved with UTF8 encoding
-                using StringReader reader = new(Encoding.UTF8.GetString(byteList.ToArray()));
+                //using StreamReader reader = new(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                using StringReader reader = new(longPath);
 
-                while (totalBytesRead < Size)
+                while (TryGetNextExtendedAttribute(reader, out string? key, out string? value))
                 {
-                    if (!TryAddNextExtendedAttribute(reader, out int bytesRead))
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value) && !ExtendedAttributes.ContainsKey(key))
                     {
-                        break;
+                        ExtendedAttributes.Add(key, value);
                     }
-                    totalBytesRead += bytesRead;
-                }
-
-                if (totalBytesRead != Size)
-                {
-                    // The reported size for the extended attributes section was incorrect.
-                    return false;
                 }
             }
-
-            return true;
         }
 
-        private bool TryReadGnuLongPathDataBlock(Stream archiveStream)
+        private bool TryGetNextExtendedAttribute(StringReader reader, out string? key, out string? value)
         {
-            Debug.Assert(TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
+            key = value = null;
 
-            if (!TryReadBytes(archiveStream, Size, out List<byte> byteList))
-            {
-                return false;
-            }
-            if (byteList.Count > 0)
-            {
-                string longPath = GetTrimmedUtf8String(byteList.ToArray());
-
-                if (TypeFlag == TarArchiveEntryType.LongLink)
-                {
-                    LinkName = longPath;
-                }
-                else if (TypeFlag == TarArchiveEntryType.LongPath)
-                {
-                    Name = longPath;
-                }
-            }
-            return true;
-        }
-
-        private bool TryAddNextExtendedAttribute(StringReader reader, out int bytesRead)
-        {
-            Debug.Assert(ExtendedAttributes != null);
-
-            bytesRead = 0;
-
-            string? nextAttribute = reader.ReadLine();
-
-            if (string.IsNullOrWhiteSpace(nextAttribute))
+            string? nextLine = reader.ReadLine();
+            if (string.IsNullOrWhiteSpace(nextLine))
             {
                 return false;
             }
 
             StringSplitOptions splitOptions = StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
 
-            string[] attributeArray = nextAttribute.Split(' ', 2, splitOptions);
+            string[] attributeArray = nextLine.Split(' ', 2, splitOptions);
             if (attributeArray.Length != 2)
-            {
-                return false;
-            }
-
-            if (!int.TryParse(attributeArray[0], out bytesRead))
             {
                 return false;
             }
@@ -587,9 +500,39 @@ namespace System.IO.Compression
                 return false;
             }
 
-            ExtendedAttributes.Add(keyAndValueArray[0], keyAndValueArray[1]);
+            key = keyAndValueArray[0];
+            value = keyAndValueArray[1];
 
             return true;
+        }
+
+        private void ReadGnuLongPathDataBlock(Stream archiveStream)
+        {
+            Debug.Assert(TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
+
+            if (Size > 0)
+            {
+                // Highly doubtful that a long path will be longer than int.MaxValue.
+                Debug.Assert(Size <= int.MaxValue);
+
+                byte[] buffer = new byte[(int)Size];
+
+                if (archiveStream.Read(buffer.AsSpan()) != Size)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                string longPath = GetTrimmedUtf8String(buffer);
+
+                if (TypeFlag == TarArchiveEntryType.LongLink)
+                {
+                    LinkName = longPath;
+                }
+                else if (TypeFlag == TarArchiveEntryType.LongPath)
+                {
+                    Name = longPath;
+                }
+            }
         }
 
         private void ReplaceNormalAttributesWithExtended(TarHeader extendedAttributesHeader)
@@ -626,9 +569,19 @@ namespace System.IO.Compression
             {
                 Size = long.Parse(ea["size"]);
             }
+
+            ExtendedAttributes ??= new();
+
+            foreach ((string key, string value) in extendedAttributesHeader.ExtendedAttributes)
+            {
+                if (!ExtendedAttributes.TryAdd(key, value))
+                {
+                    ExtendedAttributes[key] = value;
+                }
+            }
         }
 
-        private void ReplaceNormalAttributesWithGnuPrefixEntry(TarHeader previousHeader)
+        private void ReplaceGnuPaths(TarHeader previousHeader)
         {
             Debug.Assert(previousHeader.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
 
@@ -684,43 +637,129 @@ namespace System.IO.Compression
         // After the file contents, there may be zero or more null characters,
         // which exist to ensure the data is aligned to the record size. Skip them and
         // set the stream position to the first byte of the next entry.
-        private bool TrySkipBlockAlignmentPadding(Stream archiveStream, out long totalSkipped)
+        private void SkipBlockAlignmentPadding(Stream archiveStream)
         {
             long ceilingMultipleOfRecordSize = ((TarArchive.RecordSize - 1) | (Size - 1)) + 1;
             int bufferLength = (int)(ceilingMultipleOfRecordSize - Size);
-            totalSkipped = bufferLength > 0 ? archiveStream.Read(new byte[bufferLength]) : 0;
-            return totalSkipped == bufferLength;
+
+            if (archiveStream.CanSeek)
+            {
+                archiveStream.AdvanceToPosition(archiveStream.Position + bufferLength);
+            }
+            else if (bufferLength > 0)
+            {
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(minimumLength: bufferLength);
+                if (archiveStream.Read(buffer.AsSpan(0, bufferLength)) != bufferLength)
+                {
+                    throw new EndOfStreamException();
+                }
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         // Move the stream position to the first byte after the data ends.
         // TODO: This method should go away after figuring out what to do with the data on unseekable streams.
-        private bool TrySkipFileDataBlock(Stream archiveStream) => TryReadBytes(archiveStream, Size, out _);
-
-        // TODO: Don't like the list, need to optimize that.
-        private bool TryReadBytes(Stream archiveStream, long bytesToRead, out List<byte> byteList)
+        private void ProcessDataBlock(Stream archiveStream)
         {
-            byteList = new();
+            if (TypeFlag is TarArchiveEntryType.Normal or TarArchiveEntryType.Normal && Size > 0)
+            {
+                _dataStream = GetDataStream(archiveStream);
+            }
+            else if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
+            {
+                ReadPaxExtendedAttributes(archiveStream);
+            }
+            else if (TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
+            {
+                ReadGnuLongPathDataBlock(archiveStream);
+            }
+            else
+            {
+                // Anything that is not a normal file does not have actual data.
+                DiscardBytes(archiveStream, Size);
+            }
+        }
+
+        private Stream GetDataStream(Stream archiveStream)
+        {
+            Stream stream;
+
+            if (archiveStream.CanSeek)
+            {
+                long dataStartPosition = archiveStream.Position;
+                archiveStream.AdvanceToPosition(dataStartPosition + Size);
+                stream = new SubReadStream(archiveStream, dataStartPosition, Size);
+            }
+            else
+            {
+                stream = CopyDataToNewStream(archiveStream, Size);
+            }
+
+            return stream;
+        }
+
+        private Stream CopyDataToNewStream(Stream archiveStream, long bytesToRead)
+        {
+            MemoryStream stream = new();
+
+            int bufferLength = 4096;
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(minimumLength: bufferLength);
             while (bytesToRead > 0)
             {
                 if (bytesToRead > int.MaxValue)
                 {
-                    byte[] buffer = new byte[int.MaxValue];
-                    if (archiveStream.Read(buffer) != int.MaxValue)
+                    if (archiveStream.Read(buffer.AsSpan(0, bufferLength)) != bufferLength)
                     {
-                        return false; // Reached end of stream
+                        throw new EndOfStreamException();
                     }
-                    byteList.AddRange(buffer);
-                    bytesToRead -= int.MaxValue;
+                    stream.Write(buffer.AsSpan());
+                    bytesToRead -= bufferLength;
                 }
                 else
                 {
-                    byte[] buffer = new byte[bytesToRead];
-                    archiveStream.Read(buffer);
-                    byteList.AddRange(buffer);
-                    break;
+                    if (archiveStream.Read(buffer.AsSpan(0, (int)bytesToRead)) != bytesToRead)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    stream.Write(buffer.AsSpan(0, (int)bytesToRead));
+                    bytesToRead = 0;
                 }
             }
-            return true;
+            ArrayPool<byte>.Shared.Return(buffer);
+
+            return stream;
+        }
+
+        private void DiscardBytes(Stream archiveStream, long bytesToDiscard)
+        {
+            if (bytesToDiscard == 0)
+            {
+                return;
+            }
+
+            int bufferLength = 4096;
+            byte[] buffer = new byte[bufferLength];
+            long bytesDiscarded = 0;
+
+            while (bytesDiscarded < bytesToDiscard)
+            {
+                if (bytesToDiscard > int.MaxValue)
+                {
+                    if (archiveStream.Read(buffer.AsSpan(0, bufferLength)) != bufferLength)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    bytesDiscarded += bufferLength;
+                }
+                else
+                {
+                    if (archiveStream.Read(buffer.AsSpan(0, (int)bytesToDiscard)) != bytesToDiscard)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    bytesDiscarded += bytesToDiscard;
+                }
+            }
         }
 
         internal static bool IsAllZeros(byte[] array)
