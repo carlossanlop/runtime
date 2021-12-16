@@ -21,6 +21,7 @@ namespace System.IO.Compression
         internal const TarArchiveEntryType GlobalExtendedAttributesEntryType = (TarArchiveEntryType)'g';
 
         internal Stream? _dataStream;
+        internal long _endOfHeader;
 
         internal TarFormat Format { get; set; }
 
@@ -645,6 +646,7 @@ namespace System.IO.Compression
             if (archiveStream.CanSeek)
             {
                 archiveStream.AdvanceToPosition(archiveStream.Position + bufferLength);
+                _endOfHeader = archiveStream.Position;
             }
             else if (bufferLength > 0)
             {
@@ -661,7 +663,7 @@ namespace System.IO.Compression
         // TODO: This method should go away after figuring out what to do with the data on unseekable streams.
         private void ProcessDataBlock(Stream archiveStream)
         {
-            if (TypeFlag is TarArchiveEntryType.Normal or TarArchiveEntryType.Normal && Size > 0)
+            if ((TypeFlag is TarArchiveEntryType.Normal or TarArchiveEntryType.OldNormal) && Size > 0)
             {
                 _dataStream = GetDataStream(archiveStream);
             }
@@ -687,8 +689,8 @@ namespace System.IO.Compression
             if (archiveStream.CanSeek)
             {
                 long dataStartPosition = archiveStream.Position;
-                archiveStream.AdvanceToPosition(dataStartPosition + Size);
-                stream = new SubReadStream(archiveStream, dataStartPosition, Size);
+                stream = new SeekableSubReadStream(archiveStream, dataStartPosition, Size);
+                archiveStream.Position += Size;
             }
             else
             {

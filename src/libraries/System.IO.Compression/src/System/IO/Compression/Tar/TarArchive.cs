@@ -16,6 +16,7 @@ namespace System.IO.Compression
         private bool _isDisposed;
 
         internal Dictionary<string, string>? _globalExtendedAttributes;
+        private long _lastPositionRead;
 
         public TarFormat Format => _format;
 
@@ -43,6 +44,7 @@ namespace System.IO.Compression
             }
 
             _archiveStream = stream;
+            _lastPositionRead = _archiveStream.CanSeek ? stream.Position : 0;
             _globalExtendedAttributes = null;
             _format = TarFormat.Unknown;
         }
@@ -53,11 +55,17 @@ namespace System.IO.Compression
 
             TarArchiveEntry? entry = null;
 
+            if (_archiveStream.CanSeek)
+            {
+                _archiveStream.Seek(_lastPositionRead, SeekOrigin.Begin);
+            }
+
             if (TryGetNextHeader(out TarHeader header))
             {
                 entry = new TarArchiveEntry(this, header);
                 OverwriteExtendedAttributesWithGlobalIfNeeded(entry);
                 AddEntry(entry);
+                _lastPositionRead = _archiveStream.CanSeek ? entry.EndOfheader : -1;
             }
 
             return entry;

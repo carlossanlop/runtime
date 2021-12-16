@@ -12,6 +12,7 @@ namespace System.IO.Compression
         private TarArchive? _archive;
         internal TarHeader _header;
         internal MemoryStream? _stream;
+        internal long EndOfheader => _header._endOfHeader;
 
         public int Checksum => _header.Checksum;
         public int DevMajor => _header.DevMajor;
@@ -69,19 +70,10 @@ namespace System.IO.Compression
                 throw new InvalidDataException(SR.NotSupported_UnreadableStream);
             }
 
-            switch (TypeFlag)
+            if (_header._dataStream != null)
             {
-                case TarArchiveEntryType.OldNormal:
-                case TarArchiveEntryType.Normal:
-                    {
-                        Debug.Assert(_header._dataStream != null);
-                        Debug.Assert(_header._dataStream.CanSeek);
-
-                        _header._dataStream.Seek(0, SeekOrigin.Begin);
-                        return _header._dataStream;
-                    }
-                default:
-                    break;
+                _header._dataStream.Seek(0, SeekOrigin.Begin);
+                return _header._dataStream;
             }
 
             return null;
