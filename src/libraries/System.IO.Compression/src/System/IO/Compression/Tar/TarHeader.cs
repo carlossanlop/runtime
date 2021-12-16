@@ -53,14 +53,16 @@ namespace System.IO.Compression
         // PAX extended attributes
         internal Dictionary<string, string>? ExtendedAttributes;
 
+        // Attempts to read the next tar archive entry header.
+        // Returns true if a full header was read successfully, false otherwise.
         internal static bool TryGetNextHeader(Stream archiveStream, TarFormat currentArchiveFormat, out TarHeader header)
         {
             header = default;
 
-            // If archive format is unknown, this is the first entry we read
-            // If pax, then any entries read as ustar should be considered pax
-            // Any other combination means the archive is malformed: having
-            // multiple incompatible entries in the same archive is not expected.
+            // If the archive format is unknown, this is the first entry we read.
+            // If the format is pax, then any entries read as ustar should be considered pax.
+            // Any other combination means the archive is malformed: having multiple
+            // incompatible entries in the same archive is not expected.
             header.Format = currentArchiveFormat;
 
             if (!header.TryReadAttributes(archiveStream))
@@ -108,9 +110,13 @@ namespace System.IO.Compression
             return true;
         }
 
+        // Attempts to read all the fields of the header.
+        // Throws if end of stream is reached or if any data type conversion fails.
+        // Returns true if all the attributes were read successfully, false otherwise.
         private bool TryReadAttributes(Stream archiveStream)
         {
             _rawHeader = default;
+
             // Confirms if v7 or pax, or tentatively selects ustar
             if (!TryReadCommonAttributes(archiveStream))
             {
@@ -118,61 +124,38 @@ namespace System.IO.Compression
             }
 
             // Confirms if gnu, or tentatively selects ustar
-            if (!TryReadMagicAttribute(archiveStream))
-            {
-                return false;
-            }
+            ReadMagicAttribute(archiveStream);
 
             if (Format == TarFormat.V7)
             {
                 // Space between end of header and start of file data.
-                if (!_rawHeader.TryReadV7PaddingBytes(archiveStream))
-                {
-                    return false;
-                }
+                _rawHeader.ReadV7PaddingBytes(archiveStream);
             }
             else
             {
                 // Confirms if gnu
-                if (!TryReadVersionAttribute(archiveStream))
-                {
-                    return false;
-                }
+                ReadVersionAttribute(archiveStream);
 
                 // Fields that ustar, pax and gnu share identically
-                if (!TryReadPosixAndGnuSharedAttributes(archiveStream))
-                {
-                    return false;
-                }
+                ReadPosixAndGnuSharedAttributes(archiveStream);
 
                 if (Format == TarFormat.Pax)
                 {
                     // Pax does not use the prefix for extended paths like ustar.
                     // Long paths are saved in the extended attributes section.
-                    if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
-                    {
-                        return false;
-                    }
+                    _rawHeader.ReadPosixPrefixAttributeBytes(archiveStream);
 
                     // The padding is the space between end of header and start of:
                     // - The actual extended attributes values if that's the current entry's type.
                     // - The file data, if the previous entry was an extended attributes entry.
-                    if (!_rawHeader.TryReadPosixPaddingBytes(archiveStream))
-                    {
-                        return false;
-                    }
+                    _rawHeader.ReadPosixPaddingBytes(archiveStream);
                 }
                 else if (Format == TarFormat.Gnu)
                 {
-                    if (!TryReadGnuAttributes(archiveStream))
-                    {
-                        return false;
-                    }
+                    ReadGnuAttributes(archiveStream);
+
                     // The padding is the space between end of the header and the start of the data.
-                    if (!_rawHeader.TryReadGnuPaddingBytes(archiveStream))
-                    {
-                        return false;
-                    }
+                    _rawHeader.ReadGnuPaddingBytes(archiveStream);
                 }
                 else if (Format == TarFormat.Ustar)
                 {
@@ -180,15 +163,10 @@ namespace System.IO.Compression
                     //    then it can be split by any  '/' characters, with the first portion being stored here.
                     //    So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
                     //  - Null terminated unless the entire field is set.
-                    if (!TryReadUstarPrefixAttribute(archiveStream))
-                    {
-                        return false;
-                    }
+                    ReadUstarPrefixAttribute(archiveStream);
+
                     // The padding is the space between end of the header and the start of the data.
-                    if (!_rawHeader.TryReadPosixPaddingBytes(archiveStream))
-                    {
-                        return false;
-                    }
+                    _rawHeader.ReadPosixPaddingBytes(archiveStream);
                 }
                 else
                 {
@@ -202,7 +180,9 @@ namespace System.IO.Compression
             return true;
         }
 
-        // Fields shared by all tar formats
+        // Attempts to read the fields shared by all formats and stores them in their expected data type.
+        // Throws if end of stream is reached or if any data type conversion fails.
+        // Returns true on success, false if checksum is zero.
         private bool TryReadCommonAttributes(Stream archiveStream)
         {
             if (!_rawHeader.TryReadCommonAttributeBytes(archiveStream))
@@ -267,7 +247,7 @@ namespace System.IO.Compression
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
             Checksum = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._checksumBytes);
 
-            // Zero checksum means this is a null block
+            // Zero checksum means the whole header is empty
             if (Checksum == 0)
             {
                 return false;
@@ -292,7 +272,7 @@ namespace System.IO.Compression
             //      K: Long link with the full path in the data section.
             //      L: Long path with the full path in the data section.
             //      D: Directory but with a list of filesystem entries in the data section.
-            TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagBytes[0];
+            TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagByte[0];
 
             // If the file is a link, contains the name of the target.
             // v7:
@@ -323,19 +303,17 @@ namespace System.IO.Compression
             return true;
         }
 
-        // Field only found in ustar or above
-        private bool TryReadMagicAttribute(Stream archiveStream)
+        // Reads fields only found in ustar format or above and converts them to their expected data type.
+        // Throws if end of stream is reached or if any conversion fails.
+        private void ReadMagicAttribute(Stream archiveStream)
         {
-            if (!_rawHeader.TryReadMagicBytes(archiveStream))
-            {
-                return false;
-            }
+            _rawHeader.ReadMagicBytes(archiveStream);
 
             // If at this point the magic value is all nulls, we definitely have a V7
-            if (IsAllZeros(_rawHeader._magicBytes))
+            if (IsAllNullBytes(_rawHeader._magicBytes))
             {
                 Format = TarFormat.V7;
-                return true;
+                return;
             }
 
             // When the magic field is set, the archive is newer than v7.
@@ -356,41 +334,37 @@ namespace System.IO.Compression
                 // TypeFlag common attribute, do it here.
                 Format = TarFormat.Ustar;
             }
-
-            return true;
         }
 
-        private bool TryReadVersionAttribute(Stream archiveStream)
+        // Reads the version string and determines the format depending on its value.
+        // Throws if end of stream is reached, if converting the bytes to string fails,
+        // or if an unexpected version string is found.
+        private void ReadVersionAttribute(Stream archiveStream)
         {
             if (Format != TarFormat.V7)
             {
-                if (!_rawHeader.TryReadVersionBytes(archiveStream))
-                {
-                    return false;
-                }
+                _rawHeader.ReadVersionBytes(archiveStream);
 
                 Version = GetTrimmedAsciiString(_rawHeader._versionBytes, trim: false);
 
                 // POSIX have a 6B Magic "ustar\0" and a 2B version "00"
                 if ((Format is TarFormat.Ustar or TarFormat.Pax) && Version != UstarVersion)
                 {
-                    return false;
+                    throw new FormatException(); // TODO
                 }
                 // GNU has an 8B magic value of "ustar  \0", and we already read the first 6 bytes in magic
                 if (Format == TarFormat.Gnu && Version != GnuVersion)
                 {
-                    return false;
+                    throw new FormatException(); // TODO
                 }
             }
-            return true;
         }
 
-        private bool TryReadPosixAndGnuSharedAttributes(Stream archiveStream)
+        // Reads the attributes shared by the POSIX and GNU formats.
+        // Throws if end of stream is reached or if converting the bytes to their expected data type fails.
+        private void ReadPosixAndGnuSharedAttributes(Stream archiveStream)
         {
-            if (!_rawHeader.TryReadPosixAndGnuSharedAttributeBytes(archiveStream))
-            {
-                return false;
-            }
+            _rawHeader.ReadPosixAndGnuSharedAttributeBytes(archiveStream);
 
             // ASCII user name.
             // ustar:
@@ -418,18 +392,17 @@ namespace System.IO.Compression
                 // - Expected to be zero-padded in the front, and space OR null terminated.
                 DevMinor = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._devMinorBytes);
             }
-
-            return true;
         }
 
-        private bool TryReadGnuAttributes(Stream archiveStream) => _rawHeader.TryReadGnuAttributeBytes(archiveStream);
+        // Reads attributes specific to the GNU format.
+        // Throws if end of stream is reached.
+        private void ReadGnuAttributes(Stream archiveStream) => _rawHeader.ReadGnuAttributeBytes(archiveStream);
 
-        private bool TryReadUstarPrefixAttribute(Stream archiveStream)
+        // Reads the ustar prefix attribute.
+        // Throws if end of stream is reached or if a conversion to an expected data type fails.
+        private void ReadUstarPrefixAttribute(Stream archiveStream)
         {
-            if (!_rawHeader.TryReadPosixPrefixAttributeBytes(archiveStream))
-            {
-                return false;
-            }
+            _rawHeader.ReadPosixPrefixAttributeBytes(archiveStream);
 
             Prefix = GetTrimmedUtf8String(_rawHeader._prefixBytes);
 
@@ -439,12 +412,14 @@ namespace System.IO.Compression
             {
                 Name = Path.Join(Prefix, Name);
             }
-
-            return true;
         }
 
+        // Collects the extended attributes found in the data section of a PAX entry of type 'x' or 'g'.
+        // Throws if end of stream is reached or if an attribute is malformed.
         private void ReadPaxExtendedAttributes(Stream archiveStream)
         {
+            Debug.Assert(TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType);
+
             if (Size > 0)
             {
                 // Highly doubtful that a long path will be longer than int.MaxValue.
@@ -477,6 +452,8 @@ namespace System.IO.Compression
             }
         }
 
+        // Tries to collect the next extended attribute.
+        // Throws if end of stream is reached or if an attribute is malformed.
         private bool TryGetNextExtendedAttribute(StringReader reader, out string? key, out string? value)
         {
             key = value = null;
@@ -507,6 +484,7 @@ namespace System.IO.Compression
             return true;
         }
 
+        // Reads the long path found in the data section of a GNU entry of type 'K' or 'L'.
         private void ReadGnuLongPathDataBlock(Stream archiveStream)
         {
             Debug.Assert(TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
@@ -536,6 +514,8 @@ namespace System.IO.Compression
             }
         }
 
+        // If they already exist, replaces the extended attributes of the current entry with those found
+        // in the global extended attributes entry found on the first position of the current archive.
         private void ReplaceNormalAttributesWithExtended(TarHeader extendedAttributesHeader)
         {
             Debug.Assert(extendedAttributesHeader.ExtendedAttributes != null);
@@ -582,6 +562,8 @@ namespace System.IO.Compression
             }
         }
 
+        // Depending on the specified previous header typeflag, replaces the current header's
+        //  linkname or name with either the linkname or name of the previous header, respectively.
         private void ReplaceGnuPaths(TarHeader previousHeader)
         {
             Debug.Assert(previousHeader.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
@@ -660,7 +642,6 @@ namespace System.IO.Compression
         }
 
         // Move the stream position to the first byte after the data ends.
-        // TODO: This method should go away after figuring out what to do with the data on unseekable streams.
         private void ProcessDataBlock(Stream archiveStream)
         {
             if ((TypeFlag is TarArchiveEntryType.Normal or TarArchiveEntryType.OldNormal) && Size > 0)
@@ -682,6 +663,7 @@ namespace System.IO.Compression
             }
         }
 
+        // Returns a stream that represents the data section of the current header.
         private Stream GetDataStream(Stream archiveStream)
         {
             Stream stream;
@@ -700,6 +682,7 @@ namespace System.IO.Compression
             return stream;
         }
 
+        // Copies the data section of the current header into a new stream, then returns it.
         private Stream CopyDataToNewStream(Stream archiveStream, long bytesToRead)
         {
             MemoryStream stream = new();
@@ -732,6 +715,7 @@ namespace System.IO.Compression
             return stream;
         }
 
+        // Skips the specified bytes from the archive stream.
         private void DiscardBytes(Stream archiveStream, long bytesToDiscard)
         {
             if (bytesToDiscard == 0)
@@ -764,7 +748,8 @@ namespace System.IO.Compression
             }
         }
 
-        internal static bool IsAllZeros(byte[] array)
+        // Returns true if all the bytes in the specified array are nulls, false otherwise.
+        internal static bool IsAllNullBytes(byte[] array)
         {
             for (int i = 0; i < array.Length; i++)
             {
