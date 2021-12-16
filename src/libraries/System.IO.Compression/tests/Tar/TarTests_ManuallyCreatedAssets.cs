@@ -62,7 +62,7 @@ namespace System.IO.Compression.Tests
 
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_Pax_Links_ManuallyCreated(string testCaseName) =>
+        public void Read_Gzip_Pax_Links_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
 
         #endregion
@@ -90,7 +90,7 @@ namespace System.IO.Compression.Tests
 
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_Gnu_Links_ManuallyCreated(string testCaseName) =>
+        public void Read_Gzip_Gnu_Links_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
 
         #endregion
@@ -104,7 +104,7 @@ namespace System.IO.Compression.Tests
 
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_OldGnu_Links_ManuallyCreated(string testCaseName) =>
+        public void Read_Gzip_OldGnu_Links_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
 
         #endregion
