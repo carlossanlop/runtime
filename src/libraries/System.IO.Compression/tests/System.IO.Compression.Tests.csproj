@@ -9,6 +9,7 @@
     <Compile Include="CompressionStreamUnitTests.ZLib.cs" />
     <Compile Include="CompressionStreamUnitTests.Deflate.cs" />
     <Compile Include="CompressionStreamUnitTests.Gzip.cs" />
+    <Compile Include="Tar\TarTests.cs" />
     <Compile Include="Tar\TarArchiveTests.cs" />
     <Compile Include="Tar\TarArchiveTests_ManuallyCreatedAssets.cs" />
     <Compile Include="Utilities\StripHeaderAndFooter.cs" />

@@ -3,7 +3,7 @@
 
 namespace System.IO.Compression.Tests
 {
-    public partial class TarArchiveTests : FileCleanupTestBase
+    public partial class TarArchiveTests : TarTests
     {
         private void CreateHardLink(string linkPath, string targetPath) => Interop.Kernel32.CreateHardLink(linkPath, targetPath);
     }

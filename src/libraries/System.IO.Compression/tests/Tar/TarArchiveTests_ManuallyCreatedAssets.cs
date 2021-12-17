@@ -10,7 +10,7 @@ namespace System.IO.Compression.Tests
     // Tests that manually create expected files.
     // These test methods are a workaround for the nupkg bug preventing the
     // correct extraction of symlink and hardlink files into disk.
-    public partial class TarArchiveTests : FileCleanupTestBase
+    public partial class TarArchiveTests : TarTests
     {
         // NuGet issues:
         // - 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders.
