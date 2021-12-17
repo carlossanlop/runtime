@@ -271,6 +271,14 @@ namespace System.IO.Compression.Tar
             //      D: Directory but with a list of filesystem entries in the data section.
             TypeFlag = (TarEntryTypeFlag)_blocks._typeFlagByte[0];
 
+            if (TypeFlag is TarEntryTypeFlag.MultiVolume or
+                            TarEntryTypeFlag.RenamedOrSymlinked or
+                            TarEntryTypeFlag.Sparse or
+                            TarEntryTypeFlag.TapeVolume)
+            {
+                throw new NotSupportedException($"Entry type not supported: {TypeFlag}");
+            }
+
             // If the file is a link, contains the name of the target.
             // v7:
             //  - Null terminated.
