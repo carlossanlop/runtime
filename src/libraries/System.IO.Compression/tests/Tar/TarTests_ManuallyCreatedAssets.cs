@@ -11,10 +11,12 @@ namespace System.IO.Compression.Tests
     public partial class TarTests : FileCleanupTestBase
     {
         // 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders
+        #region Active issue tests
+
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_Data))]
-        public void Read_Links(string testCaseName)
+        public void Read_Links_AllFormats(string testCaseName)
         {
             foreach (CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>())
             {
@@ -24,6 +26,22 @@ namespace System.IO.Compression.Tests
                 }
             }
         }
+
+        [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_LongLinks_PaxAndGnu(string testCaseName)
+        {
+            foreach (CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>())
+            {
+                foreach (TestTarFormat format in Enum.GetValues<TestTarFormat>())
+                {
+                    VerifyTarFileContents(compressionMethod, format, testCaseName);
+                }
+            }
+        }
+
+        #endregion
 
         #region V7
 
@@ -65,6 +83,16 @@ namespace System.IO.Compression.Tests
         public void Read_Gzip_Pax_Links_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
 
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Uncompressed_PaxLongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Gzip_Pax_LongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
+
         #endregion
 
         #region Pax with Global Extended Attributes
@@ -77,6 +105,16 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Gzip_Ustar_PaxGEA_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Uncompressed_PaxGEA_LongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Gzip_PaxGEA_LongLinks_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
 
         #endregion
@@ -93,6 +131,16 @@ namespace System.IO.Compression.Tests
         public void Read_Gzip_Gnu_Links_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
 
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Uncompressed_Gnu_LongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Gzip_Gnu_LongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
+
         #endregion
 
         #region Old Gnu
@@ -105,6 +153,16 @@ namespace System.IO.Compression.Tests
         [Theory]
         [MemberData(nameof(Links_Data))]
         public void Read_Gzip_OldGnu_Links_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Uncompressed_OldGnu_LongLinks_ManuallyCreated(string testCaseName) =>
+            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Gzip_OldGnu_LongLinks_ManuallyCreated(string testCaseName) =>
             GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
 
         #endregion
@@ -128,6 +186,9 @@ namespace System.IO.Compression.Tests
                     break;
                 case TestCaseSymLink:
                     GenerateSymlinkTestAssets(tmpDir);
+                    break;
+                case TestCaseLongSymlink:
+                    GenerateLongSymlinkTestAssets(tmpDir);
                     break;
                 case TestCaseFolderSymlinkFolderSubFolderFile:
                     GenerateFolderSymlinkTestAssets(tmpDir);
@@ -160,6 +221,34 @@ namespace System.IO.Compression.Tests
             FileInfo linkInfo = new(Path.Join(tmpDir.Path, "link.txt"));
             linkInfo.CreateAsSymbolicLink(targetPath);
             Assert.True(linkInfo.Exists, $"File symbolic link was not created: {linkInfo.FullName}");
+
+            var targetInfo = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
+            Assert.NotNull(targetInfo);
+            Assert.True(targetInfo.Exists, $"File symbolic link target was not found: {targetInfo.FullName}");
+        }
+
+
+        private void GenerateLongSymlinkTestAssets(TempDirectory tmpDir)
+        {
+            string linkFileName = "link.txt";
+
+            string dirName = "000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555";
+
+            string targetFileName = "00000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445.txt";
+
+            string dirPath = Path.Join(tmpDir.Path, dirName);
+            string targetPath = Path.Join(dirPath, targetFileName);
+            string linkPath = Path.Join(tmpDir.Path, linkFileName);
+
+            DirectoryInfo dir1Info = new(dirPath);
+            dir1Info.Create();
+            Assert.True(dir1Info.Exists, $"Directory was not created: {dirPath}");
+
+            GenerateFileAsset(targetPath);
+
+            FileInfo linkInfo = new(linkPath);
+            linkInfo.CreateAsSymbolicLink(targetPath);
+            Assert.True(linkInfo.Exists, $"File symbolic link was not created: {linkPath}");
 
             var targetInfo = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
             Assert.NotNull(targetInfo);

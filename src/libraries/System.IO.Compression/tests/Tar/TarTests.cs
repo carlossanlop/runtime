@@ -34,6 +34,7 @@ namespace System.IO.Compression.Tests
 
         private const string TestCaseHardLink = "file_hardlink";
         private const string TestCaseSymLink = "file_symlink";
+        private const string TestCaseLongSymlink = "file_longsymlink";
         private const string TestCaseFolderSymlinkFolderSubFolderFile = "foldersymlink_folder_subfolder_file";
         private const string TestCaseSpecialFiles = "specialfiles";
 
@@ -201,6 +202,7 @@ namespace System.IO.Compression.Tests
             yield return new object[] { "folder_file" };
             yield return new object[] { "folder_file_utf8" };
             yield return new object[] { "folder_subfolder_file" };
+            yield return new object[] { "many_small_files" };
         }
 
         public static IEnumerable<object[]> Normal_FilesAndFolders_Ustar_Data()
@@ -228,6 +230,10 @@ namespace System.IO.Compression.Tests
             yield return new object[] { TestCaseHardLink };
             yield return new object[] { TestCaseSymLink };
             yield return new object[] { TestCaseFolderSymlinkFolderSubFolderFile };
+        }
+        public static IEnumerable<object[]> Links_PaxAndGnu_Data()
+        {
+            yield return new object[] { TestCaseLongSymlink };
         }
 
         #endregion
