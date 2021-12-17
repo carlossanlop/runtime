@@ -95,19 +95,6 @@ namespace System.IO.Compression.Tests
             Assert.Throws<ObjectDisposedException>(() => archive.GetNextEntry());
         }
 
-        [Fact]
-        public void Read_TarArchive_Unseekable_Stream()
-        {
-            string testCaseName = "file";
-            TestTarFormat format = TestTarFormat.v7;
-            string tarFilePath = GetTarFile(CompressionMethod.Uncompressed, format, testCaseName);
-            string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
-
-            using FileStream fs = File.Open(tarFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            using WrappedStream stream = new(fs, canRead: true, canWrite: false, canSeek: false, null);
-            VerifyUncompressedTarStreamContents(stream, format, expectedFilesDir, testCaseName);
-        }
-
         #endregion
 
         #region V7
