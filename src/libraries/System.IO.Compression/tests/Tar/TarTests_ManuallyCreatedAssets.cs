@@ -10,7 +10,10 @@ namespace System.IO.Compression.Tests
     // correct extraction of symlink and hardlink files into disk.
     public partial class TarTests : FileCleanupTestBase
     {
-        // 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders
+        // NuGet issues:
+        // - 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders.
+        // - The MSBuild PackTask, when executed on Windows (only platform it currently supports),
+        //   is unable to pack relative symlinks that were generated on Unix.
         #region Active issue tests
 
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
