@@ -97,142 +97,95 @@ namespace System.IO.Compression.Tests
 
         #endregion
 
-        #region V7
+        #region Format specific validation
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
-        public void Read_Uncompressed_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.v7, testCaseName);
+        [MemberData(nameof(V7_Data))]
+        public void Read_V7_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.v7, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_V7_Data))]
-        public void Read_Gzip_V7_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.v7, testCaseName);
-
-        #endregion
-
-        #region Ustar
+        [MemberData(nameof(Ustar_Data))]
+        public void Read_Ustar_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.ustar, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
-        public void Read_Uncompressed_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.ustar, testCaseName);
+        [MemberData(nameof(PaxAndGnu_Data))]
+        public void Read_Pax_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.pax, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_Ustar_Data))]
-        public void Read_Gzip_Ustar_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.ustar, testCaseName);
-
-        #endregion
-
-        #region Pax
+        [MemberData(nameof(PaxAndGnu_Data))]
+        public void Read_PaxGEA_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.pax_gea, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Uncompressed_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
+        [MemberData(nameof(PaxAndGnu_Data))]
+        public void Read_Gnu_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.gnu, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Gzip_Pax_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
-
-        #endregion
-
-        #region Pax with Global Extended Attributes
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Uncompressed_PaxGEA_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Gzip_PaxGEA_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
-
-        #endregion
-
-        #region Gnu
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Uncompressed_Gnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Gzip_Gnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
-
-        #endregion
-
-        #region Old Gnu
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Uncompressed_OldGnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Normal_FilesAndFolders_PaxAndGnu_Data))]
-        public void Read_Gzip_OldGnu_NormalFilesAndFolders(string testCaseName) =>
-            VerifyTarFileContents(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
+        [MemberData(nameof(PaxAndGnu_Data))]
+        public void Read_OldGnu_NormalFilesAndFolders(string testCaseName, CompressionMethod compressionMethod) =>
+            VerifyTarFileContents(compressionMethod, TestTarFormat.oldgnu, testCaseName);
 
         #endregion
 
         #region Data
 
-        public static IEnumerable<object[]> Normal_FilesAndFolders_V7_Data()
-        {
-            yield return new object[] { "file" };
-            yield return new object[] { "folder_file" };
-            yield return new object[] { "folder_file_utf8" };
-            yield return new object[] { "folder_subfolder_file" };
-            yield return new object[] { "many_small_files" };
-        }
+        // Can be read by all formats
+        public static IEnumerable<object[]> V7_Data() =>
+            from string testCase in new[] { "file", "folder_file", "folder_file_utf8", "folder_subfolder_file", "many_small_files" }
+            from CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>()
+            select new object[] { testCase, compressionMethod };
 
-        public static IEnumerable<object[]> Normal_FilesAndFolders_Ustar_Data()
+        // Can be read by ustar and above
+        public static IEnumerable<object[]> Ustar_Data()
         {
-            foreach (var item in Normal_FilesAndFolders_V7_Data())
+            foreach (var item in V7_Data())
             {
                 yield return item;
             }
-            yield return new object[] { TestCaseSpecialFiles };
-            yield return new object[] { "longpath_splitable_under255" };
-        }
 
-        public static IEnumerable<object[]> Normal_FilesAndFolders_PaxAndGnu_Data()
-        {
-            foreach (var item in Normal_FilesAndFolders_Ustar_Data())
+            var results = from string testCase in new[] { TestCaseSpecialFiles, "longpath_splitable_under255" }
+                from CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>()
+                select new object[] { testCase, compressionMethod };
+
+            foreach (var item in results)
             {
                 yield return item;
             }
-            yield return new object[] { "longfilename_over100_under255" };
-            yield return new object[] { "longpath_over255" };
         }
 
-        public static IEnumerable<object[]> Links_Data()
+        // Can be read by pax, gnu and oldgnu
+        public static IEnumerable<object[]> PaxAndGnu_Data()
         {
-            yield return new object[] { TestCaseHardLink };
-            yield return new object[] { TestCaseSymLink };
-            yield return new object[] { TestCaseFolderSymlinkFolderSubFolderFile };
-        }
-        public static IEnumerable<object[]> Links_PaxAndGnu_Data()
-        {
-            yield return new object[] { TestCaseLongSymlink };
+            foreach (var item in Ustar_Data())
+            {
+                yield return item;
+            }
+
+            var results = from string testCase in new[] { "longfilename_over100_under255", "longpath_over255" }
+                from CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>()
+                select new object[] { testCase, compressionMethod };
+
+            foreach (var item in results)
+            {
+                yield return item;
+            }
         }
 
         #endregion
 
         #region Helpers
 
-        protected enum CompressionMethod
+        public enum CompressionMethod
         {
             Uncompressed,
             GZip,
         }
 
+        // Names match the testcase foldername
         protected enum TestTarFormat
         {
             v7,

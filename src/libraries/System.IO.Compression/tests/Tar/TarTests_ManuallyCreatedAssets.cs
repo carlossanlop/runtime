@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
 namespace System.IO.Compression.Tests
@@ -14,159 +16,98 @@ namespace System.IO.Compression.Tests
         // - 'dotnet restore' unexpectedly extracts nupkg symlinks and hardlinks as normal files/folders.
         // - The MSBuild PackTask, when executed on Windows (only platform it currently supports),
         //   is unable to pack relative symlinks that were generated on Unix.
-        #region Active issue tests
+        #region Tests with active issue
 
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Links_AllFormats(string testCaseName)
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_Links_AllFormats(string testCaseName, CompressionMethod compressionMethod)
         {
-            foreach (CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>())
+            foreach (TestTarFormat format in Enum.GetValues<TestTarFormat>())
             {
-                foreach (TestTarFormat format in Enum.GetValues<TestTarFormat>())
-                {
-                    VerifyTarFileContents(compressionMethod, format, testCaseName);
-                }
+                VerifyTarFileContents(compressionMethod, format, testCaseName);
             }
         }
 
         [ActiveIssue("https://github.com/NuGet/Home/issues/10734")]
         [Theory]
         [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_LongLinks_PaxAndGnu(string testCaseName)
+        public void Read_LongLinks_PaxAndGnu(string testCaseName, CompressionMethod compressionMethod)
         {
-            foreach (CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>())
+            foreach (TestTarFormat format in new[] { TestTarFormat.pax, TestTarFormat.pax_gea, TestTarFormat.gnu, TestTarFormat.oldgnu })
             {
-                foreach (TestTarFormat format in Enum.GetValues<TestTarFormat>())
-                {
-                    VerifyTarFileContents(compressionMethod, format, testCaseName);
-                }
+                VerifyTarFileContents(compressionMethod, format, testCaseName);
             }
         }
 
         #endregion
 
-        #region V7
+        #region Format specific validation
 
         [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_V7_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.v7, testCaseName);
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_V7_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.v7, testCaseName);
 
         [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_V7_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.v7, testCaseName);
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_Ustar_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.ustar, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_Pax_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.pax, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_PaxGEA_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_Gnu_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.gnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_V7_Data))]
+        public void Read_OldGnu_Links_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.oldgnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Pax_LongLinks_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.pax, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_PaxGEA_LongLinks_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.pax_gea, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_Gnu_LongLinks_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.gnu, testCaseName);
+
+        [Theory]
+        [MemberData(nameof(Links_PaxAndGnu_Data))]
+        public void Read_OldGnu_LongLinks_ManuallyCreated(string testCaseName, CompressionMethod compressionMethod) =>
+            GenerateExpectedFilesAndCompare(compressionMethod, TestTarFormat.oldgnu, testCaseName);
 
         #endregion
 
-        #region Ustar
+        #region Data
 
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Ustar_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.ustar, testCaseName);
+        // Can be read by all formats
+        public static IEnumerable<object[]> Links_V7_Data() =>
+            from string testCase in new[] { TestCaseHardLink, TestCaseSymLink, TestCaseFolderSymlinkFolderSubFolderFile }
+            from CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>()
+            select new object[] { testCase, compressionMethod };
 
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.ustar, testCaseName);
-
-        #endregion
-
-        #region Pax
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Pax_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Pax_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Uncompressed_PaxLongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Gzip_Pax_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax, testCaseName);
-
-        #endregion
-
-        #region Pax with Global Extended Attributes
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_PaxGEA_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Ustar_PaxGEA_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Uncompressed_PaxGEA_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.pax_gea, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Gzip_PaxGEA_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.pax_gea, testCaseName);
-
-        #endregion
-
-        #region Gnu
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_Gnu_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_Gnu_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Uncompressed_Gnu_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.gnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Gzip_Gnu_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.gnu, testCaseName);
-
-        #endregion
-
-        #region Old Gnu
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Uncompressed_OldGnu_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_Data))]
-        public void Read_Gzip_OldGnu_Links_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Uncompressed_OldGnu_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.Uncompressed, TestTarFormat.oldgnu, testCaseName);
-
-        [Theory]
-        [MemberData(nameof(Links_PaxAndGnu_Data))]
-        public void Read_Gzip_OldGnu_LongLinks_ManuallyCreated(string testCaseName) =>
-            GenerateExpectedFilesAndCompare(CompressionMethod.GZip, TestTarFormat.oldgnu, testCaseName);
+        // Can be read by pax, gnu and oldgnu
+        public static IEnumerable<object[]> Links_PaxAndGnu_Data() =>
+            from CompressionMethod compressionMethod in Enum.GetValues<CompressionMethod>()
+            select new object[] { TestCaseLongSymlink, compressionMethod };
 
         #endregion
 
