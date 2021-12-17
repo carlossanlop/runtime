@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
-namespace System.IO.Compression
+namespace System.IO.Compression.Tar
 {
     internal struct TarHeader
     {
@@ -16,9 +16,6 @@ namespace System.IO.Compression
         private const string UstarVersion = "00";
         private const string GnuMagic = "ustar ";
         private const string GnuVersion = " \0";
-
-        internal const TarArchiveEntryType ExtendedAttributesEntryType = (TarArchiveEntryType)'x';
-        internal const TarArchiveEntryType GlobalExtendedAttributesEntryType = (TarArchiveEntryType)'g';
 
         internal Stream? _dataStream;
         internal long _endOfHeader;
@@ -34,7 +31,7 @@ namespace System.IO.Compression
         internal long Size { get; private set; }
         internal DateTime MTime { get; private set; }
         internal int Checksum { get; private set; }
-        internal TarArchiveEntryType TypeFlag { get; private set; }
+        internal EntryTypeFlag TypeFlag { get; private set; }
         internal string LinkName { get; private set; }
 
         // POSIX and GNU shared attributes
@@ -75,7 +72,7 @@ namespace System.IO.Compression
                 // If the current header type represents extended attributes 'x', then the actual header
                 // we need to return is the next one, but with its normal attributes replaced with the
                 // ones found in the current entry.
-                if (header.TypeFlag == ExtendedAttributesEntryType)
+                if (header.TypeFlag == EntryTypeFlag.ExtendedAttributes)
                 {
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Pax;
@@ -90,7 +87,7 @@ namespace System.IO.Compression
             else if (header.Format == TarFormat.Gnu)
             {
                 if (header.TypeFlag is
-                    TarArchiveEntryType.DirectoryEntry or TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
+                    EntryTypeFlag.DirectoryEntry or EntryTypeFlag.LongLink or EntryTypeFlag.LongPath)
                 {
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Gnu;
@@ -99,7 +96,7 @@ namespace System.IO.Compression
                         return false;
                     }
 
-                    if (header.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
+                    if (header.TypeFlag is EntryTypeFlag.LongLink or EntryTypeFlag.LongPath)
                     {
                         nextHeader.ReplaceGnuPaths(header);
                     }
@@ -272,7 +269,7 @@ namespace System.IO.Compression
             //      K: Long link with the full path in the data section.
             //      L: Long path with the full path in the data section.
             //      D: Directory but with a list of filesystem entries in the data section.
-            TypeFlag = (TarArchiveEntryType)_rawHeader._typeFlagByte[0];
+            TypeFlag = (EntryTypeFlag)_rawHeader._typeFlagByte[0];
 
             // If the file is a link, contains the name of the target.
             // v7:
@@ -283,12 +280,12 @@ namespace System.IO.Compression
 
             if (Format == TarFormat.Unknown)
             {
-                if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
+                if (TypeFlag is EntryTypeFlag.ExtendedAttributes or EntryTypeFlag.GlobalExtendedAttributes)
                 {
                     Format = TarFormat.Pax;
                 }
                 else if (TypeFlag is
-                    TarArchiveEntryType.DirectoryEntry or TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
+                    EntryTypeFlag.DirectoryEntry or EntryTypeFlag.LongLink or EntryTypeFlag.LongPath)
                 {
                     Format = TarFormat.Gnu;
                 }
@@ -296,7 +293,7 @@ namespace System.IO.Compression
                 {
                     // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal',
                     // because V7 is the only one that uses 'OldNormal'.
-                    Format = (TypeFlag == TarArchiveEntryType.Normal) ? TarFormat.Ustar : TarFormat.V7;
+                    Format = (TypeFlag == EntryTypeFlag.Normal) ? TarFormat.Ustar : TarFormat.V7;
                 }
             }
 
@@ -380,7 +377,7 @@ namespace System.IO.Compression
 
             // These fields only have valid numbers with these two entry types,
             // otherwise they are filled with nulls or spaces
-            if (TypeFlag is TarArchiveEntryType.Character or TarArchiveEntryType.Block)
+            if (TypeFlag is EntryTypeFlag.Character or EntryTypeFlag.Block)
             {
                 // Major number for a character device or block device entry.
                 // ustar:
@@ -418,7 +415,7 @@ namespace System.IO.Compression
         // Throws if end of stream is reached or if an attribute is malformed.
         private void ReadPaxExtendedAttributes(Stream archiveStream)
         {
-            Debug.Assert(TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType);
+            Debug.Assert(TypeFlag is EntryTypeFlag.ExtendedAttributes or EntryTypeFlag.GlobalExtendedAttributes);
 
             if (Size > 0)
             {
@@ -487,7 +484,7 @@ namespace System.IO.Compression
         // Reads the long path found in the data section of a GNU entry of type 'K' or 'L'.
         private void ReadGnuLongPathDataBlock(Stream archiveStream)
         {
-            Debug.Assert(TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
+            Debug.Assert(TypeFlag is EntryTypeFlag.LongLink or EntryTypeFlag.LongPath);
 
             if (Size > 0)
             {
@@ -503,11 +500,11 @@ namespace System.IO.Compression
 
                 string longPath = GetTrimmedUtf8String(buffer);
 
-                if (TypeFlag == TarArchiveEntryType.LongLink)
+                if (TypeFlag == EntryTypeFlag.LongLink)
                 {
                     LinkName = longPath;
                 }
-                else if (TypeFlag == TarArchiveEntryType.LongPath)
+                else if (TypeFlag == EntryTypeFlag.LongPath)
                 {
                     Name = longPath;
                 }
@@ -566,13 +563,13 @@ namespace System.IO.Compression
         //  linkname or name with either the linkname or name of the previous header, respectively.
         private void ReplaceGnuPaths(TarHeader previousHeader)
         {
-            Debug.Assert(previousHeader.TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath);
+            Debug.Assert(previousHeader.TypeFlag is EntryTypeFlag.LongLink or EntryTypeFlag.LongPath);
 
-            if (previousHeader.TypeFlag == TarArchiveEntryType.LongLink)
+            if (previousHeader.TypeFlag == EntryTypeFlag.LongLink)
             {
                 LinkName = previousHeader.LinkName;
             }
-            else if (previousHeader.TypeFlag == TarArchiveEntryType.LongPath)
+            else if (previousHeader.TypeFlag == EntryTypeFlag.LongPath)
             {
                 Name = previousHeader.Name;
             }
@@ -644,15 +641,15 @@ namespace System.IO.Compression
         // Move the stream position to the first byte after the data ends.
         private void ProcessDataBlock(Stream archiveStream)
         {
-            if ((TypeFlag is TarArchiveEntryType.Normal or TarArchiveEntryType.OldNormal) && Size > 0)
+            if ((TypeFlag is EntryTypeFlag.Normal or EntryTypeFlag.OldNormal) && Size > 0)
             {
                 _dataStream = GetDataStream(archiveStream);
             }
-            else if (TypeFlag is ExtendedAttributesEntryType or GlobalExtendedAttributesEntryType)
+            else if (TypeFlag is EntryTypeFlag.ExtendedAttributes or EntryTypeFlag.GlobalExtendedAttributes)
             {
                 ReadPaxExtendedAttributes(archiveStream);
             }
-            else if (TypeFlag is TarArchiveEntryType.LongLink or TarArchiveEntryType.LongPath)
+            else if (TypeFlag is EntryTypeFlag.LongLink or EntryTypeFlag.LongPath)
             {
                 ReadGnuLongPathDataBlock(archiveStream);
             }

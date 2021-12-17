@@ -1,9 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace System.IO.Compression
+namespace System.IO.Compression.Tar
 {
-    public enum TarArchiveEntryType
+    // Enumerates the type flags found in a tar archive entry header.
+    internal enum EntryTypeFlag
     {
         OldNormal = '\0',
         Normal = '0',
@@ -13,13 +14,17 @@ namespace System.IO.Compression
         Block = '4',
         Directory = '5',
         Fifo = '6',
+        Contiguous = '7',
+        ExtendedAttributes = 'x',
+        GlobalExtendedAttributes = 'g',
         DirectoryEntry = 'D',
         LongLink = 'K',
         LongPath = 'L',
+        MultiVolume = 'M',
+        RenamedOrSymlinked = 'N',
+        Sparse = 'S',
+        TapeVolume = 'V',
 
-        // PAX entry types that need to be handled internally:
-        // - Extended attributes: x
-        // - Global extended attributes: g
 
         // GNU entry types currently not implemented/supported:
         // - Contiguous file: 7 - should be treated as 0, it's extremely rare to handle it as contiguous.

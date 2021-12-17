@@ -1,7 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace System.IO.Compression
+namespace System.IO.Compression.Tar
 {
     // Reads the tar stream and stores the fields as raw bytes.
     // Supported formats:
@@ -173,11 +173,13 @@ namespace System.IO.Compression
 
         // Reads and stores bytes of the V7 padding.
         // Throws if end of stream is reached.
-        internal void ReadV7PaddingBytes(Stream archiveStream) =>
+        internal void ReadV7PaddingBytes(Stream archiveStream)
+        {
             // Because we tried to detect the magic in case the header was ustar or above,
             // We already advanced those bytes, so we need to substract them from the expected
             // V7 padding length.
             ReadPaddingBytes(archiveStream, FieldLengths.V7Padding - FieldLengths.Magic);
+        }
 
         // Reads and stores bytes of a POSIX padding.
         // Throws if end of stream is reached.

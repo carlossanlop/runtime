@@ -1,11 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace System.IO.Compression
+namespace System.IO.Compression.Tar
 {
-    public enum TarFormat
+    internal enum TarFormat
     {
-        Unknown, // TODO: Do not expose this value
+        Unknown,
         V7,
         Ustar,
         Pax,

@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Compression.Tar;
 
 namespace System.IO.Compression
 {
@@ -24,7 +25,33 @@ namespace System.IO.Compression
         public string LinkName => _header.LinkName;
         public int Mode => _header.Mode;
         public string Name => _header.Name;
-        public TarArchiveEntryType TypeFlag => _header.TypeFlag;
+        public TarArchiveEntryType TypeFlag
+        {
+            get
+            {
+                Debug.Assert(_header.TypeFlag is not
+                    EntryTypeFlag.ExtendedAttributes and not
+                    EntryTypeFlag.GlobalExtendedAttributes and not
+                    EntryTypeFlag.LongLink and not
+                    EntryTypeFlag.LongPath and not
+                    EntryTypeFlag.MultiVolume and not
+                    EntryTypeFlag.RenamedOrSymlinked and not
+                    EntryTypeFlag.Sparse and not
+                    EntryTypeFlag.TapeVolume);
+
+                return _header.TypeFlag switch
+                {
+                    EntryTypeFlag.Normal or EntryTypeFlag.OldNormal or EntryTypeFlag.Contiguous => TarArchiveEntryType.RegularFile,
+                    EntryTypeFlag.Directory or EntryTypeFlag.DirectoryEntry => TarArchiveEntryType.Directory,
+                    EntryTypeFlag.SymbolicLink => TarArchiveEntryType.SymbolicLink,
+                    EntryTypeFlag.Link => TarArchiveEntryType.HardLink,
+                    EntryTypeFlag.Fifo => TarArchiveEntryType.Fifo,
+                    EntryTypeFlag.Block => TarArchiveEntryType.BlockDevice,
+                    EntryTypeFlag.Character => TarArchiveEntryType.CharacterDevice,
+                    _ => throw new NotSupportedException(),
+                };
+            }
+        }
         public int Uid => _header.Uid;
         public string? UName => _header.UName;
 
