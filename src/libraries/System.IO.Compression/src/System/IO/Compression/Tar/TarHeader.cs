@@ -10,7 +10,7 @@ namespace System.IO.Compression.Tar
 {
     internal struct TarHeader
     {
-        private RawTarHeader _rawHeader;
+        private TarBlocks _blocks;
 
         private const string UstarMagic = "ustar\0";
         private const string UstarVersion = "00";
@@ -112,7 +112,7 @@ namespace System.IO.Compression.Tar
         // Returns true if all the attributes were read successfully, false otherwise.
         private bool TryReadAttributes(Stream archiveStream)
         {
-            _rawHeader = default;
+            _blocks = default;
 
             // Confirms if v7 or pax, or tentatively selects ustar
             if (!TryReadCommonAttributes(archiveStream))
@@ -126,7 +126,7 @@ namespace System.IO.Compression.Tar
             if (Format == TarFormat.V7)
             {
                 // Space between end of header and start of file data.
-                _rawHeader.ReadV7PaddingBytes(archiveStream);
+                _blocks.ReadV7PaddingBytes(archiveStream);
             }
             else
             {
@@ -140,19 +140,19 @@ namespace System.IO.Compression.Tar
                 {
                     // Pax does not use the prefix for extended paths like ustar.
                     // Long paths are saved in the extended attributes section.
-                    _rawHeader.ReadPosixPrefixAttributeBytes(archiveStream);
+                    _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
 
                     // The padding is the space between end of header and start of:
                     // - The actual extended attributes values if that's the current entry's type.
                     // - The file data, if the previous entry was an extended attributes entry.
-                    _rawHeader.ReadPosixPaddingBytes(archiveStream);
+                    _blocks.ReadPosixPaddingBytes(archiveStream);
                 }
                 else if (Format == TarFormat.Gnu)
                 {
                     ReadGnuAttributes(archiveStream);
 
                     // The padding is the space between end of the header and the start of the data.
-                    _rawHeader.ReadGnuPaddingBytes(archiveStream);
+                    _blocks.ReadGnuPaddingBytes(archiveStream);
                 }
                 else if (Format == TarFormat.Ustar)
                 {
@@ -163,7 +163,7 @@ namespace System.IO.Compression.Tar
                     ReadUstarPrefixAttribute(archiveStream);
 
                     // The padding is the space between end of the header and the start of the data.
-                    _rawHeader.ReadPosixPaddingBytes(archiveStream);
+                    _blocks.ReadPosixPaddingBytes(archiveStream);
                 }
                 else
                 {
@@ -182,7 +182,7 @@ namespace System.IO.Compression.Tar
         // Returns true on success, false if checksum is zero.
         private bool TryReadCommonAttributes(Stream archiveStream)
         {
-            if (!_rawHeader.TryReadCommonAttributeBytes(archiveStream))
+            if (!_blocks.TryReadCommonAttributeBytes(archiveStream))
             {
                 return false;
             }
@@ -193,28 +193,28 @@ namespace System.IO.Compression.Tar
             // ustar:
             //  - Does not expect trailing separator for directory (that's what typeflag is for), but should add it for backwards-compat.
             //  - Null terminated unless the entire field is filled.
-            Name = GetTrimmedUtf8String(_rawHeader._nameBytes);
+            Name = GetTrimmedUtf8String(_blocks._nameBytes);
 
             // File mode, as an octal number in Encoding.ASCII.
             // v7:
             //  - Expects this to be space+null terminated.
             // ustar:
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Mode = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._modeBytes);
+            Mode = GetTenBaseNumberFromOctalAsciiChars(_blocks._modeBytes);
 
             // Owner user ID, as an octal number in Encoding.ASCII.
             // v7
             //  - Expects this to be space+null terminated.
             // ustar:
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Uid = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._uidBytes);
+            Uid = GetTenBaseNumberFromOctalAsciiChars(_blocks._uidBytes);
 
             // Owner group ID, as an octal number in Encoding.ASCII.
             // v7:
             //  - Expects this to be space+null terminated.
             // ustar:
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Gid = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._gidBytes);
+            Gid = GetTenBaseNumberFromOctalAsciiChars(_blocks._gidBytes);
 
             // Size of file, as an octal number in Encoding.ASCII.
             // v7:
@@ -226,14 +226,14 @@ namespace System.IO.Compression.Tar
             // - Directories: may indicate the total size of all files in the directory, so
             //   operating systems that preallocate directory space can use it. Usually expected to be zero.
             // - All other types: it should be zero and ignored by readers.
-            Size = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._sizeBytes);
+            Size = GetTenBaseNumberFromOctalAsciiChars(_blocks._sizeBytes);
 
             // Last modification timestamp, as an octal number in Encoding.ASCII. Represents seconds since the epoch.
             // v7:
             //  - Expects this to be space terminated.
             // ustar:
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            int mtime = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._mTimeBytes);
+            int mtime = GetTenBaseNumberFromOctalAsciiChars(_blocks._mTimeBytes);
             MTime = DateTimeFromSecondsSinceEpoch(mtime);
 
             // Header checksum, as an octal number in Encoding.ASCII. Consists of the sum of all
@@ -242,7 +242,7 @@ namespace System.IO.Compression.Tar
             //  - Expects this to be null+space terminated.
             // ustar:
             //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Checksum = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._checksumBytes);
+            Checksum = GetTenBaseNumberFromOctalAsciiChars(_blocks._checksumBytes);
 
             // Zero checksum means the whole header is empty
             if (Checksum == 0)
@@ -269,14 +269,14 @@ namespace System.IO.Compression.Tar
             //      K: Long link with the full path in the data section.
             //      L: Long path with the full path in the data section.
             //      D: Directory but with a list of filesystem entries in the data section.
-            TypeFlag = (EntryTypeFlag)_rawHeader._typeFlagByte[0];
+            TypeFlag = (EntryTypeFlag)_blocks._typeFlagByte[0];
 
             // If the file is a link, contains the name of the target.
             // v7:
             //  - Null terminated.
             // ustar:
             //  - Null terminated unless the entire field is filled.
-            LinkName = GetTrimmedUtf8String(_rawHeader._linkNameBytes);
+            LinkName = GetTrimmedUtf8String(_blocks._linkNameBytes);
 
             if (Format == TarFormat.Unknown)
             {
@@ -304,10 +304,10 @@ namespace System.IO.Compression.Tar
         // Throws if end of stream is reached or if any conversion fails.
         private void ReadMagicAttribute(Stream archiveStream)
         {
-            _rawHeader.ReadMagicBytes(archiveStream);
+            _blocks.ReadMagicBytes(archiveStream);
 
             // If at this point the magic value is all nulls, we definitely have a V7
-            if (IsAllNullBytes(_rawHeader._magicBytes))
+            if (IsAllNullBytes(_blocks._magicBytes))
             {
                 Format = TarFormat.V7;
                 return;
@@ -319,7 +319,7 @@ namespace System.IO.Compression.Tar
             // oldgnu and gnu:
             // - Contains the ASCII magic value 'ustar  \0'. 8 bytes long.
             // - As a consequence, it does not have a '00' version string afterwards.
-            Magic = GetTrimmedAsciiString(_rawHeader._magicBytes, trim: false);
+            Magic = GetTrimmedAsciiString(_blocks._magicBytes, trim: false);
 
             if (Magic == GnuMagic)
             {
@@ -340,9 +340,9 @@ namespace System.IO.Compression.Tar
         {
             if (Format != TarFormat.V7)
             {
-                _rawHeader.ReadVersionBytes(archiveStream);
+                _blocks.ReadVersionBytes(archiveStream);
 
-                Version = GetTrimmedAsciiString(_rawHeader._versionBytes, trim: false);
+                Version = GetTrimmedAsciiString(_blocks._versionBytes, trim: false);
 
                 // POSIX have a 6B Magic "ustar\0" and a 2B version "00"
                 if ((Format is TarFormat.Ustar or TarFormat.Pax) && Version != UstarVersion)
@@ -361,19 +361,19 @@ namespace System.IO.Compression.Tar
         // Throws if end of stream is reached or if converting the bytes to their expected data type fails.
         private void ReadPosixAndGnuSharedAttributes(Stream archiveStream)
         {
-            _rawHeader.ReadPosixAndGnuSharedAttributeBytes(archiveStream);
+            _blocks.ReadPosixAndGnuSharedAttributeBytes(archiveStream);
 
             // ASCII user name.
             // ustar:
             //  - Null terminated.
             //  - Used in preference to uid if the user name exists in the system.
-            UName = GetTrimmedAsciiString(_rawHeader._uNameBytes);
+            UName = GetTrimmedAsciiString(_blocks._uNameBytes);
 
             // ASCII group name.
             // ustar:
             //  - Null terminated.
             //  - Used in preference to gid if the group name exists in the system.
-            GName = GetTrimmedAsciiString(_rawHeader._gNameBytes);
+            GName = GetTrimmedAsciiString(_blocks._gNameBytes);
 
             // These fields only have valid numbers with these two entry types,
             // otherwise they are filled with nulls or spaces
@@ -382,26 +382,26 @@ namespace System.IO.Compression.Tar
                 // Major number for a character device or block device entry.
                 // ustar:
                 //  - Expected to be zero-padded in the front, and space OR null terminated.
-                DevMajor = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._devMajorBytes);
+                DevMajor = GetTenBaseNumberFromOctalAsciiChars(_blocks._devMajorBytes);
 
                 // Minor number for a character device or block device entry.
                 // ustar:
                 // - Expected to be zero-padded in the front, and space OR null terminated.
-                DevMinor = GetTenBaseNumberFromOctalAsciiChars(_rawHeader._devMinorBytes);
+                DevMinor = GetTenBaseNumberFromOctalAsciiChars(_blocks._devMinorBytes);
             }
         }
 
         // Reads attributes specific to the GNU format.
         // Throws if end of stream is reached.
-        private void ReadGnuAttributes(Stream archiveStream) => _rawHeader.ReadGnuAttributeBytes(archiveStream);
+        private void ReadGnuAttributes(Stream archiveStream) => _blocks.ReadGnuAttributeBytes(archiveStream);
 
         // Reads the ustar prefix attribute.
         // Throws if end of stream is reached or if a conversion to an expected data type fails.
         private void ReadUstarPrefixAttribute(Stream archiveStream)
         {
-            _rawHeader.ReadPosixPrefixAttributeBytes(archiveStream);
+            _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
 
-            Prefix = GetTrimmedUtf8String(_rawHeader._prefixBytes);
+            Prefix = GetTrimmedUtf8String(_blocks._prefixBytes);
 
             // The Prefix byte array is used to store the ending path segments that did not fit in the Name byte array.
             // Note: Prefix may end in a directory separator.

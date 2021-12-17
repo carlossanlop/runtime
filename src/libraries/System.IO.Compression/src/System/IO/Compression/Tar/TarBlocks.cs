@@ -7,7 +7,7 @@ namespace System.IO.Compression.Tar
     // Supported formats:
     // - Version 7 AT&T Unix (v7 for short). Oldest.
     // Documentation: https://www.freebsd.org/cgi/man.cgi?query=tar&sektion=5
-    internal struct RawTarHeader
+    internal struct TarBlocks
     {
         // Common attributes
 
