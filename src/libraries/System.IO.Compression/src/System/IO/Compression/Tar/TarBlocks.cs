@@ -43,12 +43,11 @@ namespace System.IO.Compression.Tar
         internal byte[] _offsetBytes;
         internal byte[] _longNameBytes;
         internal byte[] _unusedByte;
-        internal struct Sparse
-        {
-            internal byte[] _offsetBytes;
-            internal byte[] _byteNumberBytes;
-        }
-        internal Sparse[] _sparseItems;
+
+        // This field is actually a struct array with 4 items
+        // each containing two 12 byte arrays:
+        // struct Sparse { byte[12] offset, byte[12] numbytes }
+        internal byte[] _sparseBytes;
         internal byte[] _isExtendedByte;
         internal byte[] _realSizeBytes;
 
@@ -146,15 +145,8 @@ namespace System.IO.Compression.Tar
             _unusedByte = new byte[FieldLengths.Unused];
             ReadOrThrow(archiveStream, ref _unusedByte, FieldLengths.Unused);
 
-            _sparseItems = new Sparse[FieldLengths.SparseItems];
-            for (int i = 0; i < FieldLengths.SparseItems; i++)
-            {
-                _sparseItems[i]._offsetBytes = new byte[FieldLengths.SparseOffset];
-                ReadOrThrow(archiveStream, ref _sparseItems[i]._offsetBytes, FieldLengths.SparseOffset);
-
-                _sparseItems[i]._byteNumberBytes = new byte[FieldLengths.SparseByteNumber];
-                ReadOrThrow(archiveStream, ref _sparseItems[i]._byteNumberBytes, FieldLengths.SparseByteNumber);
-            }
+            _sparseBytes = new byte[FieldLengths.Sparse];
+            ReadOrThrow(archiveStream, ref _sparseBytes, FieldLengths.Sparse);
 
             _isExtendedByte = new byte[FieldLengths.IsExtended];
             ReadOrThrow(archiveStream, ref _isExtendedByte, FieldLengths.IsExtended);
@@ -243,9 +235,7 @@ namespace System.IO.Compression.Tar
             internal const ushort Offset = 12;
             internal const ushort LongNames = 4;
             internal const ushort Unused = 1;
-            internal const ushort SparseItems = 4;
-            internal const ushort SparseOffset = 12;
-            internal const ushort SparseByteNumber = 12;
+            internal const ushort Sparse = 4 * (12 + 12);
             internal const ushort IsExtended = 1;
             internal const ushort RealSize = 12;
 
