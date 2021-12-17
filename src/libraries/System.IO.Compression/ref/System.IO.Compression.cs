@@ -88,8 +88,8 @@ namespace System.IO.Compression
     }
     public class TarArchive : IDisposable
     {
-        public System.IO.Compression.TarOptions Options { get { throw null; } }
-        public TarArchive(System.IO.Stream stream, System.IO.Compression.TarOptions? options) { }
+        public System.IO.Compression.TarArchiveOptions Options { get { throw null; } }
+        public TarArchive(System.IO.Stream stream, System.IO.Compression.TarArchiveOptions? options) { }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
         public System.IO.Compression.TarArchiveEntry? GetNextEntry() { throw null; }
@@ -127,11 +127,11 @@ namespace System.IO.Compression
     {
         Read = 0,
     }
-    public class TarOptions
+    public class TarArchiveOptions
     {
         public System.IO.Compression.TarArchiveMode Mode { get { throw null; } set { } }
         public bool LeaveOpen { get { throw null; } set { } }
-        public TarOptions() { }
+        public TarArchiveOptions() { }
     }
     public partial class ZipArchive : System.IDisposable
     {
