@@ -108,7 +108,7 @@ namespace System.IO.Compression
             if (TarHeader.TryGetNextHeader(_archiveStream, _format, out header))
             {
                 if (header.Format == TarFormat.Pax &&
-                    header.TypeFlag == EntryTypeFlag.GlobalExtendedAttributes)
+                    header.TypeFlag == TarEntryTypeFlag.GlobalExtendedAttributes)
                 {
                     // A PAX global extended attributes entry needs to be analyzed for its attributes section,
                     // but we should not return its header; instead, we return the next one.

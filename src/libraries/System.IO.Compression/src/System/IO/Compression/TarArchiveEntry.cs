@@ -30,24 +30,24 @@ namespace System.IO.Compression
             get
             {
                 Debug.Assert(_header.TypeFlag is not
-                    EntryTypeFlag.ExtendedAttributes and not
-                    EntryTypeFlag.GlobalExtendedAttributes and not
-                    EntryTypeFlag.LongLink and not
-                    EntryTypeFlag.LongPath and not
-                    EntryTypeFlag.MultiVolume and not
-                    EntryTypeFlag.RenamedOrSymlinked and not
-                    EntryTypeFlag.Sparse and not
-                    EntryTypeFlag.TapeVolume);
+                    TarEntryTypeFlag.ExtendedAttributes and not
+                    TarEntryTypeFlag.GlobalExtendedAttributes and not
+                    TarEntryTypeFlag.LongLink and not
+                    TarEntryTypeFlag.LongPath and not
+                    TarEntryTypeFlag.MultiVolume and not
+                    TarEntryTypeFlag.RenamedOrSymlinked and not
+                    TarEntryTypeFlag.Sparse and not
+                    TarEntryTypeFlag.TapeVolume);
 
                 return _header.TypeFlag switch
                 {
-                    EntryTypeFlag.Normal or EntryTypeFlag.OldNormal or EntryTypeFlag.Contiguous => TarArchiveEntryType.RegularFile,
-                    EntryTypeFlag.Directory or EntryTypeFlag.DirectoryEntry => TarArchiveEntryType.Directory,
-                    EntryTypeFlag.SymbolicLink => TarArchiveEntryType.SymbolicLink,
-                    EntryTypeFlag.Link => TarArchiveEntryType.HardLink,
-                    EntryTypeFlag.Fifo => TarArchiveEntryType.Fifo,
-                    EntryTypeFlag.Block => TarArchiveEntryType.BlockDevice,
-                    EntryTypeFlag.Character => TarArchiveEntryType.CharacterDevice,
+                    TarEntryTypeFlag.Normal or TarEntryTypeFlag.OldNormal or TarEntryTypeFlag.Contiguous => TarArchiveEntryType.RegularFile,
+                    TarEntryTypeFlag.Directory or TarEntryTypeFlag.DirectoryEntry => TarArchiveEntryType.Directory,
+                    TarEntryTypeFlag.SymbolicLink => TarArchiveEntryType.SymbolicLink,
+                    TarEntryTypeFlag.Link => TarArchiveEntryType.HardLink,
+                    TarEntryTypeFlag.Fifo => TarArchiveEntryType.Fifo,
+                    TarEntryTypeFlag.Block => TarArchiveEntryType.BlockDevice,
+                    TarEntryTypeFlag.Character => TarArchiveEntryType.CharacterDevice,
                     _ => throw new NotSupportedException(),
                 };
             }

@@ -4,7 +4,7 @@
 namespace System.IO.Compression.Tar
 {
     // Enumerates the type flags found in a tar archive entry header.
-    internal enum EntryTypeFlag
+    internal enum TarEntryTypeFlag
     {
         OldNormal = '\0',
         Normal = '0',
