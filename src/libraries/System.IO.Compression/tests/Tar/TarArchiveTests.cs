@@ -8,7 +8,7 @@ using Xunit;
 
 namespace System.IO.Compression.Tests
 {
-    public partial class TarTests : FileCleanupTestBase
+    public partial class TarArchiveTests : FileCleanupTestBase
     {
         #region Constants
 
