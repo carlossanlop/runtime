@@ -12,6 +12,7 @@
     <Compile Include="Tar\TarTests.cs" />
     <Compile Include="Tar\TarArchiveTests.cs" />
     <Compile Include="Tar\TarArchiveTests_ManuallyCreatedAssets.cs" />
+    <Compile Include="Tar\TarFileTests.cs" />
     <Compile Include="Utilities\StripHeaderAndFooter.cs" />
     <Compile Include="Utilities\WrappedStream.cs" />
     <Compile Include="XunitAssemblyAttributes.cs" />

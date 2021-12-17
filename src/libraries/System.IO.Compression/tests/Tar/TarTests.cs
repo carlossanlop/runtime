@@ -109,6 +109,17 @@ namespace System.IO.Compression.Tests
             gnu
         }
 
+        protected void VerifyTarFileContents(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
+        {
+            string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
+            string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
+
+            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, expectedFilesDir, testCaseName);
+        }
+
+        protected static string GetTestCaseFolderPath(string testCaseName) =>
+            Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
+
         protected static string GetTarFile(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
         {
             (string compressionMethodFolder, string fileExtension) = compressionMethod switch
@@ -142,17 +153,6 @@ namespace System.IO.Compression.Tests
                     throw new NotSupportedException();
             }
         }
-
-        protected void VerifyTarFileContents(CompressionMethod compressionMethod, TestTarFormat format, string testCaseName)
-        {
-            string tarFilePath = GetTarFile(compressionMethod, format, testCaseName);
-            string expectedFilesDir = GetTestCaseFolderPath(testCaseName);
-
-            CompareTarFileContentsWithDirectoryContents(compressionMethod, format, tarFilePath, expectedFilesDir, testCaseName);
-        }
-
-        private static string GetTestCaseFolderPath(string testCaseName) =>
-            Path.Join(Directory.GetCurrentDirectory(), "TarTestData", "unarchived", testCaseName);
 
         // Reads the contents of a stream wrapping an uncompressed tar archive, then compares
         // the entries with the filesystem entries found in the specified folder path.
