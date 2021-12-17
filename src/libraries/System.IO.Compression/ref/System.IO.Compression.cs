@@ -133,6 +133,11 @@ namespace System.IO.Compression
         public bool LeaveOpen { get { throw null; } set { } }
         public TarArchiveOptions() { }
     }
+    public class TarFile
+    {
+        public static System.IO.Compression.TarArchive OpenRead(string archiveFileName) { throw null; }
+        public static System.IO.Compression.TarArchive Open(string archiveFileName, System.IO.Compression.TarArchiveMode mode) { throw null; }
+    }
     public partial class ZipArchive : System.IDisposable
     {
         public ZipArchive(System.IO.Stream stream) { }
