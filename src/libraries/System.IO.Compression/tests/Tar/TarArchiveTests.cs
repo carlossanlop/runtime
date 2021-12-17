@@ -13,8 +13,8 @@ namespace System.IO.Compression.Tests
         #region Basic validation
 
         [Fact]
-        public void Null_Stream()
-            => Assert.Throws<ArgumentNullException>(() => new TarArchive(stream: null, new TarArchiveOptions()));
+        public void Null_Stream() =>
+            Assert.Throws<ArgumentNullException>(() => new TarArchive(stream: null, new TarArchiveOptions()));
 
         [Fact]
         public void Null_Options()
@@ -29,8 +29,35 @@ namespace System.IO.Compression.Tests
         [InlineData((TarArchiveMode)int.MinValue)]
         [InlineData((TarArchiveMode)(-1))]
         [InlineData((TarArchiveMode)int.MaxValue)]
-        public void Invalid_TarArchiveMode(TarArchiveMode mode)
-            => Assert.Throws<ArgumentOutOfRangeException>(() => new TarArchive(new MemoryStream(), new TarArchiveOptions() { Mode = mode }));
+        public void Invalid_TarArchiveMode(TarArchiveMode mode) =>
+            Assert.Throws<ArgumentOutOfRangeException>(() => new TarArchive(new MemoryStream(), new TarArchiveOptions() { Mode = mode }));
+
+        [Fact]
+        public void Not_A_Tar_File()
+        {
+            string zipFilePath = Path.Combine(Directory.GetCurrentDirectory(), "ZipTestData", "refzipfiles", "normal.zip");
+
+            using FileStream stream = File.Open(zipFilePath, FileMode.Open);
+
+            TarArchiveOptions options = new() { Mode = TarArchiveMode.Read };
+            using var archive = new TarArchive(stream, options);
+
+            Assert.Throws<FormatException>(() => archive.GetNextEntry());
+
+            /*
+            TODO: This exception depends on the format of the file, and it's in different locations depending on what fails first.
+            We probably have to throw consistent exception if the file does not have a valid tar format.
+            If this behavior is changed, the TarFile.Open and TarFile.OpenRead methods need to be adjusted as well.
+            Example: For this zip file, we throw when attempting to parse an octal.
+
+            System.FormatException : Could not find any recognizable digits.
+            Stack Trace:
+            D:\runtime\src\libraries\System.Private.CoreLib\src\System\ParseNumbers.cs(182,0): at System.ParseNumbers.StringToInt(ReadOnlySpan`1 s, Int32 radix, Int32 flags, Int32& currPos)
+            D:\runtime\src\libraries\System.Private.CoreLib\src\System\ParseNumbers.cs(120,0): at System.ParseNumbers.StringToInt(ReadOnlySpan`1 s, Int32 radix, Int32 flags)
+            D:\runtime\src\libraries\System.Private.CoreLib\src\System\Convert.cs(2220,0): at System.Convert.ToInt32(String value, Int32 fromBase)
+            D:\runtime\src\libraries\System.IO.Compression\src\System\IO\Compression\Tar\TarHeader.cs(615,0): at System.IO.Compression.Tar.TarHeader.GetTenBaseNumberFromOctalAsciiChars(Span`1 buffer)
+            */
+        }
 
         [Theory]
         [InlineData(false)]
