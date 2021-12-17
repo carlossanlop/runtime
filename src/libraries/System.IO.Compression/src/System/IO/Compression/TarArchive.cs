@@ -19,16 +19,16 @@ namespace System.IO.Compression
         internal Dictionary<string, string>? _globalExtendedAttributes;
         private long _lastPositionRead;
 
-        public TarOptions Options { get; }
+        public TarArchiveOptions Options { get; }
 
-        public TarArchive(Stream stream, TarOptions? options)
+        public TarArchive(Stream stream, TarArchiveOptions? options)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException(nameof(stream));
             }
 
-            Options = options ?? new TarOptions();
+            Options = options ?? new TarArchiveOptions();
 
             switch (Options.Mode)
             {
@@ -39,7 +39,7 @@ namespace System.IO.Compression
                     }
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("TarOptions.Mode out of range.", innerException: null); // TODO
+                    throw new ArgumentOutOfRangeException("TarArchiveOptions.Mode out of range.", innerException: null); // TODO
             }
 
             _archiveStream = stream;

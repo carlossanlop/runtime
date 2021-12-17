@@ -3,12 +3,12 @@
 
 namespace System.IO.Compression
 {
-    public class TarOptions
+    public class TarArchiveOptions
     {
         public TarArchiveMode Mode { get; set; } = TarArchiveMode.Read;
         public bool LeaveOpen { get; set; }
 
-        public TarOptions()
+        public TarArchiveOptions()
         {
         }
     }

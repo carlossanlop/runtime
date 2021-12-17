@@ -43,7 +43,7 @@
     <Compile Include="System\IO\Compression\TarArchiveEntry.cs" />
     <Compile Include="System\IO\Compression\TarArchiveEntryType.cs" />
     <Compile Include="System\IO\Compression\TarArchiveMode.cs" />
-    <Compile Include="System\IO\Compression\TarOptions.cs" />
+    <Compile Include="System\IO\Compression\TarArchiveOptions.cs" />
     <Compile Include="System\IO\Compression\ZLibStream.cs" />
     <Compile Include="$(CommonPath)System\Threading\Tasks\TaskToApm.cs"
              Link="Common\System\Threading\Tasks\TaskToApm.cs" />
