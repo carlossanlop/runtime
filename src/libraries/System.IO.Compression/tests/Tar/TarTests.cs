@@ -344,13 +344,12 @@ namespace System.IO.Compression.Tests
 
             switch (entry.TypeFlag)
             {
-                case TarArchiveEntryType.OldNormal:
-                case TarArchiveEntryType.Normal:
+                case TarArchiveEntryType.RegularFile:
                     Assert.True(File.Exists(fullPath), $"File does not exist: {fullPath}");
                     Assert.NotNull(dataStream);
                     break;
 
-                case TarArchiveEntryType.Link:
+                case TarArchiveEntryType.HardLink:
                     VerifyHardLinkEntry(entry, fullPath, linkTargetFullPath);
                     Assert.Null(dataStream);
                     break;
@@ -366,14 +365,14 @@ namespace System.IO.Compression.Tests
                     Assert.Null(dataStream);
                     break;
 
-                case TarArchiveEntryType.Block:
+                case TarArchiveEntryType.BlockDevice:
                     Assert.Equal(BlockDevName, entry.Name);
                     Assert.Equal(BlockDevMajor, entry.DevMajor);
                     Assert.Equal(BlockDevMinor, entry.DevMinor);
                     Assert.Null(dataStream);
                     break;
 
-                case TarArchiveEntryType.Character:
+                case TarArchiveEntryType.CharacterDevice:
                     Assert.Equal(CharDevName, entry.Name);
                     Assert.Equal(CharDevMajor, entry.DevMajor);
                     Assert.Equal(CharDevMinor, entry.DevMinor);
@@ -385,10 +384,6 @@ namespace System.IO.Compression.Tests
                     Assert.Null(dataStream);
                     break;
 
-                // TODO: Do not expose these entry types, convert them to their simple version
-                case TarArchiveEntryType.DirectoryEntry:
-                case TarArchiveEntryType.LongLink:
-                case TarArchiveEntryType.LongPath:
                 default:
                     throw new NotSupportedException($"Unexpected entry type: {entry.TypeFlag}");
             }
