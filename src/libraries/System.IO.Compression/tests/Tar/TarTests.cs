@@ -47,7 +47,7 @@ namespace System.IO.Compression.Tests
 
         [Fact]
         public void Null_Stream()
-            => Assert.Throws<ArgumentNullException>(() => new TarArchive(stream: null, new TarOptions()));
+            => Assert.Throws<ArgumentNullException>(() => new TarArchive(stream: null, new TarArchiveOptions()));
 
         [Fact]
         public void Null_Options()
@@ -63,7 +63,7 @@ namespace System.IO.Compression.Tests
         [InlineData((TarArchiveMode)(-1))]
         [InlineData((TarArchiveMode)int.MaxValue)]
         public void Invalid_TarArchiveMode(TarArchiveMode mode)
-            => Assert.Throws<ArgumentOutOfRangeException>(() => new TarArchive(new MemoryStream(), new TarOptions() { Mode = mode }));
+            => Assert.Throws<ArgumentOutOfRangeException>(() => new TarArchive(new MemoryStream(), new TarArchiveOptions() { Mode = mode }));
 
         [Theory]
         [InlineData(false)]
@@ -71,7 +71,7 @@ namespace System.IO.Compression.Tests
         public void Verify_LeaveOpen(bool leaveOpen)
         {
             var stream = new MemoryStream();
-            using (var archive = new TarArchive(stream, new TarOptions() { LeaveOpen = leaveOpen })) { }
+            using (var archive = new TarArchive(stream, new TarArchiveOptions() { LeaveOpen = leaveOpen })) { }
 
             if (leaveOpen)
             {
@@ -87,7 +87,7 @@ namespace System.IO.Compression.Tests
         [Fact]
         public void Verify_TarArchive_Disposed()
         {
-            var archive = new TarArchive(new MemoryStream(), new TarOptions() { LeaveOpen = false });
+            var archive = new TarArchive(new MemoryStream(), new TarArchiveOptions() { LeaveOpen = false });
 
             archive.Dispose();
             archive.Dispose(); // A second dispose call should be a no-op
@@ -305,7 +305,7 @@ namespace System.IO.Compression.Tests
         // the entries with the filesystem entries found in the specified folder path.
         private void VerifyUncompressedTarStreamContents(Stream tarStream, TestTarFormat format, string expectedFilesDir, string testCaseName)
         {
-            TarOptions options = new() { Mode = TarArchiveMode.Read };
+            TarArchiveOptions options = new() { Mode = TarArchiveMode.Read };
             using var archive = new TarArchive(tarStream, options);
 
             var extractedEntries = new List<TarArchiveEntry>();
