@@ -88,7 +88,6 @@ namespace System.IO.Compression
     }
     public class TarArchive : IDisposable
     {
-        public TarFormat Format { get { throw null; } }
         public System.IO.Compression.TarOptions Options { get { throw null; } }
         public TarArchive(System.IO.Stream stream, System.IO.Compression.TarOptions? options) { }
         public void Dispose() { }
@@ -116,29 +115,17 @@ namespace System.IO.Compression
     }
     public enum TarArchiveEntryType
     {
-        OldNormal = '\0',
-        Normal = '0',
-        Link = '1',
-        SymbolicLink = '2',
-        Character = '3',
-        Block = '4',
-        Directory = '5',
-        Fifo = '6',
-        DirectoryEntry = 'D',
-        LongLink = 'K',
-        LongPath = 'L',
+        BlockDevice,
+        CharacterDevice,
+        Directory,
+        Fifo,
+        HardLink,
+        RegularFile,
+        SymbolicLink,
     }
     public enum TarArchiveMode
     {
         Read = 0,
-    }
-    public enum TarFormat
-    {
-        Unknown,
-        V7,
-        Ustar,
-        Pax,
-        Gnu,
     }
     public class TarOptions
     {
