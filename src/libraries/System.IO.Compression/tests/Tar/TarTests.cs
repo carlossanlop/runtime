@@ -126,7 +126,7 @@ namespace System.IO.Compression.Tests
             {
                 CompressionMethod.Uncompressed => ("tar", ".tar"),
                 CompressionMethod.GZip => ("targz", ".tar.gz"),
-                _ => throw new NotSupportedException(),
+                _ => throw new NotSupportedException($"Unexpected compression method: {compressionMethod}"),
             };
 
             return Path.Join(Directory.GetCurrentDirectory(), "TarTestData", compressionMethodFolder, format.ToString(), testCaseName + fileExtension);
@@ -150,7 +150,7 @@ namespace System.IO.Compression.Tests
                     break;
 
                 default:
-                    throw new NotSupportedException();
+                    throw new NotSupportedException($"Unexpected compression method: {compressionMethod}");
             }
         }
 
@@ -238,7 +238,7 @@ namespace System.IO.Compression.Tests
                     break;
 
                 default:
-                    throw new NotSupportedException($"Unexpected entry type: {entry.TypeFlag}");
+                    throw new NotSupportedException($"Unsupported entry type: {entry.TypeFlag}");
             }
 
             if (dataStream != null)
