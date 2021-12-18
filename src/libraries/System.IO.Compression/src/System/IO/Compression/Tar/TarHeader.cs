@@ -47,8 +47,11 @@ namespace System.IO.Compression.Tar
 
         internal string Prefix { get; private set; }
 
-        // PAX extended attributes
-        internal Dictionary<string, string>? ExtendedAttributes;
+        // PAX attributes
+
+        internal DateTime ATime { get; private set; }
+        internal DateTime CTime { get; private set; }
+        internal Dictionary<string, string>? _extendedAttributes;
 
         // Attempts to read the next tar archive entry header.
         // Returns true if a full header was read successfully, false otherwise.
@@ -107,6 +110,29 @@ namespace System.IO.Compression.Tar
             return true;
         }
 
+        internal void AppendGlobalExtendedAttributesIfNeeded(Dictionary<string, string>? globalExtendedAttributes)
+        {
+            if (globalExtendedAttributes == null)
+            {
+                return;
+            }
+
+            if (_extendedAttributes == null)
+            {
+                _extendedAttributes = globalExtendedAttributes;
+            }
+            else
+            {
+                foreach ((string key, string value) in globalExtendedAttributes)
+                {
+                    if (!_extendedAttributes.TryAdd(key, value))
+                    {
+                        _extendedAttributes[key] = value;
+                    }
+                }
+            }
+        }
+
         // Attempts to read all the fields of the header.
         // Throws if end of stream is reached or if any data type conversion fails.
         // Returns true if all the attributes were read successfully, false otherwise.
@@ -138,32 +164,15 @@ namespace System.IO.Compression.Tar
 
                 if (Format == TarFormat.Pax)
                 {
-                    // Pax does not use the prefix for extended paths like ustar.
-                    // Long paths are saved in the extended attributes section.
-                    _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
-
-                    // The padding is the space between end of header and start of:
-                    // - The actual extended attributes values if that's the current entry's type.
-                    // - The file data, if the previous entry was an extended attributes entry.
-                    _blocks.ReadPosixPaddingBytes(archiveStream);
+                    ReadPaxAttributes(archiveStream);
                 }
                 else if (Format == TarFormat.Gnu)
                 {
                     ReadGnuAttributes(archiveStream);
-
-                    // The padding is the space between end of the header and the start of the data.
-                    _blocks.ReadGnuPaddingBytes(archiveStream);
                 }
                 else if (Format == TarFormat.Ustar)
                 {
-                    //  - First part of the pathname. If pathname is too long to fit in the 100 bytes of 'name',
-                    //    then it can be split by any  '/' characters, with the first portion being stored here.
-                    //    So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
-                    //  - Null terminated unless the entire field is set.
-                    ReadUstarPrefixAttribute(archiveStream);
-
-                    // The padding is the space between end of the header and the start of the data.
-                    _blocks.ReadPosixPaddingBytes(archiveStream);
+                    ReadUstarAttributes(archiveStream);
                 }
                 else
                 {
@@ -399,16 +408,40 @@ namespace System.IO.Compression.Tar
             }
         }
 
+        // Reads attributes specific to the PAX format.
+        // Throws if end of stream is reached.
+        private void ReadPaxAttributes(Stream archiveStream)
+        {
+            // Pax does not use the prefix for extended paths like ustar.
+            // Long paths are saved in the extended attributes section.
+            _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
+
+            // The padding is the space between end of header and start of:
+            // - The actual extended attributes values if that's the current entry's type.
+            // - The file data, if the previous entry was an extended attributes entry.
+            _blocks.ReadPosixPaddingBytes(archiveStream);
+        }
+
         // Reads attributes specific to the GNU format.
         // Throws if end of stream is reached.
-        private void ReadGnuAttributes(Stream archiveStream) => _blocks.ReadGnuAttributeBytes(archiveStream);
+        private void ReadGnuAttributes(Stream archiveStream)
+        {
+            _blocks.ReadGnuAttributeBytes(archiveStream);
+
+            // The padding is the space between end of the header and the start of the data.
+            _blocks.ReadGnuPaddingBytes(archiveStream);
+        }
 
         // Reads the ustar prefix attribute.
         // Throws if end of stream is reached or if a conversion to an expected data type fails.
-        private void ReadUstarPrefixAttribute(Stream archiveStream)
+        private void ReadUstarAttributes(Stream archiveStream)
         {
             _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
 
+            //  - First part of the pathname. If pathname is too long to fit in the 100 bytes of 'name',
+            //    then it can be split by any  '/' characters, with the first portion being stored here.
+            //    So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
+            //  - Null terminated unless the entire field is set.
             Prefix = GetTrimmedUtf8String(_blocks._prefixBytes);
 
             // The Prefix byte array is used to store the ending path segments that did not fit in the Name byte array.
@@ -417,6 +450,9 @@ namespace System.IO.Compression.Tar
             {
                 Name = Path.Join(Prefix, Name);
             }
+
+            // The padding is the space between end of the header and the start of the data.
+            _blocks.ReadPosixPaddingBytes(archiveStream);
         }
 
         // Collects the extended attributes found in the data section of a PAX entry of type 'x' or 'g'.
@@ -430,7 +466,7 @@ namespace System.IO.Compression.Tar
                 // Highly doubtful that a long path will be longer than int.MaxValue.
                 Debug.Assert(Size <= int.MaxValue);
 
-                ExtendedAttributes ??= new();
+                _extendedAttributes ??= new();
 
                 // Also advances the archive stream
                 //using Stream stream = CopyDataToNewStream(archiveStream, Size);
@@ -449,9 +485,9 @@ namespace System.IO.Compression.Tar
 
                 while (TryGetNextExtendedAttribute(reader, out string? key, out string? value))
                 {
-                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value) && !ExtendedAttributes.ContainsKey(key))
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value) && !_extendedAttributes.ContainsKey(key))
                     {
-                        ExtendedAttributes.Add(key, value);
+                        _extendedAttributes.Add(key, value);
                     }
                 }
             }
@@ -523,46 +559,56 @@ namespace System.IO.Compression.Tar
         // in the global extended attributes entry found on the first position of the current archive.
         private void ReplaceNormalAttributesWithExtended(TarHeader extendedAttributesHeader)
         {
-            Debug.Assert(extendedAttributesHeader.ExtendedAttributes != null);
+            Debug.Assert(extendedAttributesHeader._extendedAttributes != null);
 
-            Dictionary<string, string> ea = extendedAttributesHeader.ExtendedAttributes;
+            Dictionary<string, string> ea = extendedAttributesHeader._extendedAttributes;
 
-            if (ea.ContainsKey("uname"))
+            if (ea.ContainsKey("ctime"))
             {
-                UName = ea["uname"];
+                double atime = double.Parse(ea["atime"]);
+                ATime = DateTimeFromSecondsSinceEpoch(atime);
             }
-            if (ea.ContainsKey("uid"))
+            if (ea.ContainsKey("ctime"))
             {
-                Uid = int.Parse(ea["uid"]);
-            }
-            if (ea.ContainsKey("gname"))
-            {
-                GName = ea["gname"];
+                double ctime = double.Parse(ea["ctime"]);
+                CTime = DateTimeFromSecondsSinceEpoch(ctime);
             }
             if (ea.ContainsKey("gid"))
             {
                 Gid = int.Parse(ea["gid"]);
             }
-            if (ea.ContainsKey("path"))
+            if (ea.ContainsKey("gname"))
             {
-                Name = ea["path"];
+                GName = ea["gname"];
             }
             if (ea.ContainsKey("linkpath"))
             {
                 LinkName = ea["linkpath"];
             }
+            if (ea.ContainsKey("path"))
+            {
+                Name = ea["path"];
+            }
             if (ea.ContainsKey("size"))
             {
                 Size = long.Parse(ea["size"]);
             }
-
-            ExtendedAttributes ??= new();
-
-            foreach ((string key, string value) in extendedAttributesHeader.ExtendedAttributes)
+            if (ea.ContainsKey("uid"))
             {
-                if (!ExtendedAttributes.TryAdd(key, value))
+                Uid = int.Parse(ea["uid"]);
+            }
+            if (ea.ContainsKey("uname"))
+            {
+                UName = ea["uname"];
+            }
+
+            _extendedAttributes ??= new();
+
+            foreach ((string key, string value) in extendedAttributesHeader._extendedAttributes)
+            {
+                if (!_extendedAttributes.TryAdd(key, value))
                 {
-                    ExtendedAttributes[key] = value;
+                    _extendedAttributes[key] = value;
                 }
             }
         }
@@ -616,9 +662,9 @@ namespace System.IO.Compression.Tar
         }
 
         // Returns a DateTime instance representing the number of seconds that have passed since the Unix Epoch.
-        private DateTime DateTimeFromSecondsSinceEpoch(int secondsSinceUnixEpoch)
+        private DateTime DateTimeFromSecondsSinceEpoch(double secondsSinceUnixEpoch)
         {
-            DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds(secondsSinceUnixEpoch);
+            DateTimeOffset offset = DateTimeOffset.UnixEpoch.AddSeconds(secondsSinceUnixEpoch);
             return offset.DateTime;
         }
 

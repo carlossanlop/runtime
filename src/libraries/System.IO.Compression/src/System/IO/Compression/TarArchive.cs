@@ -62,7 +62,6 @@ namespace System.IO.Compression
             if (TryGetNextHeader(out TarHeader header))
             {
                 entry = new TarArchiveEntry(this, header);
-                OverwriteExtendedAttributesWithGlobalIfNeeded(entry);
                 AddEntry(entry);
                 _lastPositionRead = _archiveStream.CanSeek ? entry.EndOfheader : -1;
             }
@@ -107,20 +106,31 @@ namespace System.IO.Compression
         {
             if (TarHeader.TryGetNextHeader(_archiveStream, _format, out header))
             {
-                if (header.Format == TarFormat.Pax &&
-                    header.TypeFlag == TarEntryTypeFlag.GlobalExtendedAttributes)
+                if (header.Format == TarFormat.Pax)
                 {
-                    // A PAX global extended attributes entry needs to be analyzed for its attributes section,
-                    // but we should not return its header; instead, we return the next one.
-
-                    // We should not expect two 'g' entries
-                    Debug.Assert(_globalExtendedAttributes == null);
-
-                    // Retrieving the global attributes is all we care about from a 'g' entry.
-                    _globalExtendedAttributes = header.ExtendedAttributes;
-
-                    if (TarHeader.TryGetNextHeader(_archiveStream, _format, out header))
+                    if (header.TypeFlag == TarEntryTypeFlag.GlobalExtendedAttributes)
                     {
+                        // A PAX global extended attributes entry needs to be analyzed for its attributes section,
+                        // but we should not return its header; instead, we return the next one.
+
+                        // We should not expect two 'g' entries
+                        if (_globalExtendedAttributes != null)
+                        {
+                            throw new FormatException("Tar archive has more than one global extended attributes entry.");
+                        }
+
+                        // The extended attributes for a 'g' entry can be empty but should never be null
+                        Debug.Assert(header._extendedAttributes != null);
+
+                        // Retrieving the global attributes is all we care about from a 'g' entry.
+                        _globalExtendedAttributes = header._extendedAttributes;
+
+                        // Skip this entry, return the next one which should have the global extended attributes applied.
+                        return TryGetNextHeader(out header);
+                    }
+                    else
+                    {
+                        header.AppendGlobalExtendedAttributesIfNeeded(_globalExtendedAttributes);
                         UpdateArchiveFormatAndStreamPosition(header);
                         return true;
                     }
@@ -144,27 +154,6 @@ namespace System.IO.Compression
             else if (header.Format != _format)
             {
                 throw new FormatException("The archive contains entries in different tar formats."); // TODO
-            }
-        }
-
-        private void OverwriteExtendedAttributesWithGlobalIfNeeded(TarArchiveEntry entry)
-        {
-            if (_globalExtendedAttributes != null)
-            {
-                if (entry._header.ExtendedAttributes == null)
-                {
-                    entry._header.ExtendedAttributes = _globalExtendedAttributes;
-                }
-                else
-                {
-                    foreach ((string key, string value) in _globalExtendedAttributes)
-                    {
-                        if (!entry._header.ExtendedAttributes.TryAdd(key, value))
-                        {
-                            entry._header.ExtendedAttributes[key] = value;
-                        }
-                    }
-                }
             }
         }
     }

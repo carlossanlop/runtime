@@ -18,9 +18,12 @@ namespace System.IO.Compression
         public int Checksum => _header.Checksum;
         public int DevMajor => _header.DevMajor;
         public int DevMinor => _header.DevMinor;
-        public IReadOnlyDictionary<string, string>? ExtendedAttributes => _header.ExtendedAttributes;
+        public IReadOnlyDictionary<string, string>? ExtendedAttributes => _header._extendedAttributes;
         public int Gid => _header.Gid;
         public string? GName => _header.GName;
+        public DateTime LastAccessTime => _header.ATime;
+        public DateTime LastChangeTime => _header.CTime;
+        public DateTime LastModificationTime => _header.MTime;
         public long Length => _stream != null ? _stream.Length : _header.Size;
         public string LinkName => _header.LinkName;
         public int Mode => _header.Mode;
@@ -29,16 +32,6 @@ namespace System.IO.Compression
         {
             get
             {
-                Debug.Assert(_header.TypeFlag is not
-                    TarEntryTypeFlag.ExtendedAttributes and not
-                    TarEntryTypeFlag.GlobalExtendedAttributes and not
-                    TarEntryTypeFlag.LongLink and not
-                    TarEntryTypeFlag.LongPath and not
-                    TarEntryTypeFlag.MultiVolume and not
-                    TarEntryTypeFlag.RenamedOrSymlinked and not
-                    TarEntryTypeFlag.Sparse and not
-                    TarEntryTypeFlag.TapeVolume);
-
                 return _header.TypeFlag switch
                 {
                     TarEntryTypeFlag.Normal or TarEntryTypeFlag.OldNormal or TarEntryTypeFlag.Contiguous => TarArchiveEntryType.RegularFile,
@@ -48,7 +41,7 @@ namespace System.IO.Compression
                     TarEntryTypeFlag.Fifo => TarArchiveEntryType.Fifo,
                     TarEntryTypeFlag.Block => TarArchiveEntryType.BlockDevice,
                     TarEntryTypeFlag.Character => TarArchiveEntryType.CharacterDevice,
-                    _ => throw new NotSupportedException(),
+                    _ => throw new NotSupportedException($"Unsupported entry type: {_header.TypeFlag}"),
                 };
             }
         }
