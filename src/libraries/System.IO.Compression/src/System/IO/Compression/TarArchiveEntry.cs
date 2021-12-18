@@ -64,7 +64,7 @@ namespace System.IO.Compression
                 case TarArchiveMode.Read:
                     return OpenInReadMode();
                 default:
-                    throw new NotImplementedException("Mode not implemented"); // TODO
+                    throw new ArgumentOutOfRangeException($"The {nameof(TarArchiveMode)} '{_archive.Options.Mode}' is out of range.", innerException: null);
             }
         }
 

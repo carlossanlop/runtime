@@ -8,19 +8,19 @@ using System.Text;
 
 namespace System.IO.Compression.Tar
 {
+    // Retrieves and stores all the attributes found in a tar archive entry.
     internal struct TarHeader
     {
-        private TarBlocks _blocks;
-
         private const string UstarMagic = "ustar\0";
         private const string UstarVersion = "00";
         private const string GnuMagic = "ustar ";
         private const string GnuVersion = " \0";
 
+        private TarBlocks _blocks;
         internal Stream? _dataStream;
         internal long _endOfHeader;
 
-        internal TarFormat Format { get; set; }
+        internal TarFormat Format { get; private set; }
 
         // Common attributes
 
@@ -49,9 +49,13 @@ namespace System.IO.Compression.Tar
 
         // PAX attributes
 
+        internal Dictionary<string, string>? _extendedAttributes;
+
+        // GNU attributes
+
         internal DateTime ATime { get; private set; }
         internal DateTime CTime { get; private set; }
-        internal Dictionary<string, string>? _extendedAttributes;
+
 
         // Attempts to read the next tar archive entry header.
         // Returns true if a full header was read successfully, false otherwise.
@@ -72,9 +76,9 @@ namespace System.IO.Compression.Tar
 
             if (header.Format == TarFormat.Pax)
             {
-                // If the current header type represents extended attributes 'x', then the actual header
-                // we need to return is the next one, but with its normal attributes replaced with the
-                // ones found in the current entry.
+                // If the current header type represents extended attributes 'x', then the actual
+                // header we need to return is the next one, with its normal attributes replaced
+                // with those found in the current entry.
                 if (header.TypeFlag == TarEntryTypeFlag.ExtendedAttributes)
                 {
                     TarHeader nextHeader = default;
@@ -89,9 +93,21 @@ namespace System.IO.Compression.Tar
             }
             else if (header.Format == TarFormat.Gnu)
             {
-                if (header.TypeFlag is
-                    TarEntryTypeFlag.DirectoryEntry or TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
+                if (header.TypeFlag is TarEntryTypeFlag.DirectoryEntry)
                 {
+                    // The DirectoryEntry typeflag is a Directory typeflag but with the list of
+                    // filesystem entries it contains saved in the data section.
+                    // Such data is currently not processed, so DirectoryEntry should be
+                    // treated as a Directory typeflag.
+                    header.TypeFlag = TarEntryTypeFlag.Directory;
+                }
+                else if (header.TypeFlag is TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
+                {
+                    // LongLink and LongPath are metadata entries.
+                    // They contain a very long path in their data section.
+                    // We retrieve the string and replace it in the Name or LinkName field,
+                    // then retrieve the next entry, which is the actual entry.
+
                     TarHeader nextHeader = default;
                     nextHeader.Format = TarFormat.Gnu;
                     if (!nextHeader.TryReadAttributes(archiveStream))
@@ -110,13 +126,10 @@ namespace System.IO.Compression.Tar
             return true;
         }
 
-        internal void AppendGlobalExtendedAttributesIfNeeded(Dictionary<string, string>? globalExtendedAttributes)
+        // Appends or overwrites the passed global extended attributes into the current
+        // header's extended attributes dictionary.
+        internal void AppendGlobalExtendedAttributesIfNeeded(Dictionary<string, string> globalExtendedAttributes)
         {
-            if (globalExtendedAttributes == null)
-            {
-                return;
-            }
-
             if (_extendedAttributes == null)
             {
                 _extendedAttributes = globalExtendedAttributes;
@@ -196,62 +209,16 @@ namespace System.IO.Compression.Tar
                 return false;
             }
 
-            // The filesystem entry path.
-            // v7:
-            //  - Expects trailing separator to indicate it's a directory. Null terminated.
-            // ustar:
-            //  - Does not expect trailing separator for directory (that's what typeflag is for), but should add it for backwards-compat.
-            //  - Null terminated unless the entire field is filled.
-            Name = GetTrimmedUtf8String(_blocks._nameBytes);
+            Name = TarHelpers.GetTrimmedUtf8String(_blocks._nameBytes);
+            Mode = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._modeBytes);
+            Uid = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._uidBytes);
+            Gid = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._gidBytes);
+            Size = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._sizeBytes);
 
-            // File mode, as an octal number in Encoding.ASCII.
-            // v7:
-            //  - Expects this to be space+null terminated.
-            // ustar:
-            //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Mode = GetTenBaseNumberFromOctalAsciiChars(_blocks._modeBytes);
+            int mtime = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._mTimeBytes);
+            MTime = TarHelpers.DateTimeFromSecondsSinceEpoch(mtime);
 
-            // Owner user ID, as an octal number in Encoding.ASCII.
-            // v7
-            //  - Expects this to be space+null terminated.
-            // ustar:
-            //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Uid = GetTenBaseNumberFromOctalAsciiChars(_blocks._uidBytes);
-
-            // Owner group ID, as an octal number in Encoding.ASCII.
-            // v7:
-            //  - Expects this to be space+null terminated.
-            // ustar:
-            //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Gid = GetTenBaseNumberFromOctalAsciiChars(_blocks._gidBytes);
-
-            // Size of file, as an octal number in Encoding.ASCII.
-            // v7:
-            // - Expects this field to be space terminated.
-            // - Can be ignored for hardlinks.
-            // ustar:
-            // - Expects this field to be zero-padded in the front, and space OR null terminated.
-            // - Normal files: indicates the amount of data following the header.
-            // - Directories: may indicate the total size of all files in the directory, so
-            //   operating systems that preallocate directory space can use it. Usually expected to be zero.
-            // - All other types: it should be zero and ignored by readers.
-            Size = GetTenBaseNumberFromOctalAsciiChars(_blocks._sizeBytes);
-
-            // Last modification timestamp, as an octal number in Encoding.ASCII. Represents seconds since the epoch.
-            // v7:
-            //  - Expects this to be space terminated.
-            // ustar:
-            //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            int mtime = GetTenBaseNumberFromOctalAsciiChars(_blocks._mTimeBytes);
-            MTime = DateTimeFromSecondsSinceEpoch(mtime);
-
-            // Header checksum, as an octal number in Encoding.ASCII. Consists of the sum of all
-            // the header bytes using unsigned arithmetic.
-            // v7:
-            //  - Expects this to be null+space terminated.
-            // ustar:
-            //  - Expects this to be zero-padded in the front, and space OR null terminated.
-            Checksum = GetTenBaseNumberFromOctalAsciiChars(_blocks._checksumBytes);
+            Checksum = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._checksumBytes);
 
             // Zero checksum means the whole header is empty
             if (Checksum == 0)
@@ -259,25 +226,6 @@ namespace System.IO.Compression.Tar
                 return false;
             }
 
-            // The filesystem entry type. v7 calls this field 'linkflag'.
-            // v7 defines:
-            //     \0: Normal
-            //      1: Hardlink
-            //      2: Symlink
-            //      3: Character
-            //      4: Block
-            //      5: Directory
-            //      6: Fifo
-            //      7: Contiguous
-            // ustar defines the same as v7, plus:
-            //      0: Normal (ustar version)
-            // pax defines the same as v7 and ustar, plus:
-            //      x: Entry with extended attributes to describe the next entry.
-            //      g: Entry with global extended attributes to describe all the rest of the entries.
-            // gnu: defines the same as v7, ustar and pax, plus:
-            //      K: Long link with the full path in the data section.
-            //      L: Long path with the full path in the data section.
-            //      D: Directory but with a list of filesystem entries in the data section.
             TypeFlag = (TarEntryTypeFlag)_blocks._typeFlagByte[0];
 
             if (TypeFlag is TarEntryTypeFlag.MultiVolume or
@@ -288,12 +236,7 @@ namespace System.IO.Compression.Tar
                 throw new NotSupportedException($"Entry type not supported: {TypeFlag}");
             }
 
-            // If the file is a link, contains the name of the target.
-            // v7:
-            //  - Null terminated.
-            // ustar:
-            //  - Null terminated unless the entire field is filled.
-            LinkName = GetTrimmedUtf8String(_blocks._linkNameBytes);
+            LinkName = TarHelpers.GetTrimmedUtf8String(_blocks._linkNameBytes);
 
             if (Format == TarFormat.Unknown)
             {
@@ -301,15 +244,14 @@ namespace System.IO.Compression.Tar
                 {
                     Format = TarFormat.Pax;
                 }
-                else if (TypeFlag is
-                    TarEntryTypeFlag.DirectoryEntry or TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
+                else if (TypeFlag is TarEntryTypeFlag.DirectoryEntry or TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
                 {
                     Format = TarFormat.Gnu;
                 }
                 else
                 {
-                    // We can quickly determine the minimum possible format if the entry type is the POSIX 'Normal',
-                    // because V7 is the only one that uses 'OldNormal'.
+                    // We can quickly determine the minimum possible format if the entry type is the
+                    // POSIX 'Normal', because V7 is the only one that uses 'OldNormal'.
                     Format = (TypeFlag == TarEntryTypeFlag.Normal) ? TarFormat.Ustar : TarFormat.V7;
                 }
             }
@@ -324,19 +266,14 @@ namespace System.IO.Compression.Tar
             _blocks.ReadMagicBytes(archiveStream);
 
             // If at this point the magic value is all nulls, we definitely have a V7
-            if (IsAllNullBytes(_blocks._magicBytes))
+            if (TarHelpers.IsAllNullBytes(_blocks._magicBytes))
             {
                 Format = TarFormat.V7;
                 return;
             }
 
             // When the magic field is set, the archive is newer than v7.
-            // ustar:
-            // - Contains the ASCII  value 'ustar\0'. 6 bytes long.
-            // oldgnu and gnu:
-            // - Contains the ASCII magic value 'ustar  \0'. 8 bytes long.
-            // - As a consequence, it does not have a '00' version string afterwards.
-            Magic = GetTrimmedAsciiString(_blocks._magicBytes, trim: false);
+            Magic = TarHelpers.GetTrimmedAsciiString(_blocks._magicBytes, trim: false);
 
             if (Magic == GnuMagic)
             {
@@ -344,8 +281,7 @@ namespace System.IO.Compression.Tar
             }
             else if (Format == TarFormat.V7 && Magic == UstarMagic)
             {
-                // If we could not yet determine a newer format than V7 when reading the
-                // TypeFlag common attribute, do it here.
+                // Important: Only change to ustar if we had not changed the format to pax already
                 Format = TarFormat.Ustar;
             }
         }
@@ -359,17 +295,17 @@ namespace System.IO.Compression.Tar
             {
                 _blocks.ReadVersionBytes(archiveStream);
 
-                Version = GetTrimmedAsciiString(_blocks._versionBytes, trim: false);
+                Version = TarHelpers.GetTrimmedAsciiString(_blocks._versionBytes, trim: false);
 
-                // POSIX have a 6B Magic "ustar\0" and a 2B version "00"
+                // The POSIX formats have a 6 byte Magic "ustar\0", followed by a 2 byte Version "00"
                 if ((Format is TarFormat.Ustar or TarFormat.Pax) && Version != UstarVersion)
                 {
-                    throw new FormatException(); // TODO
+                    throw new FormatException($"A POSIX format was expected, but could not be reliably determined for entry {Name}");
                 }
-                // GNU has an 8B magic value of "ustar  \0", and we already read the first 6 bytes in magic
-                if (Format == TarFormat.Gnu && Version != GnuVersion)
+                // The GNU format has a Magic+Version 8 byte string "ustar  \0"
+                else if (Format == TarFormat.Gnu && Version != GnuVersion)
                 {
-                    throw new FormatException(); // TODO
+                    throw new FormatException($"A GNU format was expected, but could not be reliably determined for entry {Name}");
                 }
             }
         }
@@ -380,31 +316,18 @@ namespace System.IO.Compression.Tar
         {
             _blocks.ReadPosixAndGnuSharedAttributeBytes(archiveStream);
 
-            // ASCII user name.
-            // ustar:
-            //  - Null terminated.
-            //  - Used in preference to uid if the user name exists in the system.
-            UName = GetTrimmedAsciiString(_blocks._uNameBytes);
+            UName = TarHelpers.GetTrimmedAsciiString(_blocks._uNameBytes);
+            GName = TarHelpers.GetTrimmedAsciiString(_blocks._gNameBytes);
 
-            // ASCII group name.
-            // ustar:
-            //  - Null terminated.
-            //  - Used in preference to gid if the group name exists in the system.
-            GName = GetTrimmedAsciiString(_blocks._gNameBytes);
-
-            // These fields only have valid numbers with these two entry types,
-            // otherwise they are filled with nulls or spaces
+            // DevMajor and DevMinor only have values with character devices and block devices.
+            // For all other typeflags, the values in these fields are irrelevant.
             if (TypeFlag is TarEntryTypeFlag.Character or TarEntryTypeFlag.Block)
             {
                 // Major number for a character device or block device entry.
-                // ustar:
-                //  - Expected to be zero-padded in the front, and space OR null terminated.
-                DevMajor = GetTenBaseNumberFromOctalAsciiChars(_blocks._devMajorBytes);
+                DevMajor = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._devMajorBytes);
 
                 // Minor number for a character device or block device entry.
-                // ustar:
-                // - Expected to be zero-padded in the front, and space OR null terminated.
-                DevMinor = GetTenBaseNumberFromOctalAsciiChars(_blocks._devMinorBytes);
+                DevMinor = TarHelpers.GetTenBaseNumberFromOctalAsciiChars(_blocks._devMinorBytes);
             }
         }
 
@@ -415,10 +338,6 @@ namespace System.IO.Compression.Tar
             // Pax does not use the prefix for extended paths like ustar.
             // Long paths are saved in the extended attributes section.
             _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
-
-            // The padding is the space between end of header and start of:
-            // - The actual extended attributes values if that's the current entry's type.
-            // - The file data, if the previous entry was an extended attributes entry.
             _blocks.ReadPosixPaddingBytes(archiveStream);
         }
 
@@ -427,8 +346,6 @@ namespace System.IO.Compression.Tar
         private void ReadGnuAttributes(Stream archiveStream)
         {
             _blocks.ReadGnuAttributeBytes(archiveStream);
-
-            // The padding is the space between end of the header and the start of the data.
             _blocks.ReadGnuPaddingBytes(archiveStream);
         }
 
@@ -438,20 +355,15 @@ namespace System.IO.Compression.Tar
         {
             _blocks.ReadPosixPrefixAttributeBytes(archiveStream);
 
-            //  - First part of the pathname. If pathname is too long to fit in the 100 bytes of 'name',
-            //    then it can be split by any  '/' characters, with the first portion being stored here.
-            //    So, if prefix is not empty, to obtain the regular pathname, join: 'prefix' + '/' + 'name'.
-            //  - Null terminated unless the entire field is set.
-            Prefix = GetTrimmedUtf8String(_blocks._prefixBytes);
+            Prefix = TarHelpers.GetTrimmedUtf8String(_blocks._prefixBytes);
 
-            // The Prefix byte array is used to store the ending path segments that did not fit in the Name byte array.
-            // Note: Prefix may end in a directory separator.
+            // In ustar, Prefix is used to store the *leading* path segments of
+            // Name, if the full path did not fit in the Name byte array.
             if (!string.IsNullOrEmpty(Prefix))
             {
                 Name = Path.Join(Prefix, Name);
             }
 
-            // The padding is the space between end of the header and the start of the data.
             _blocks.ReadPosixPaddingBytes(archiveStream);
         }
 
@@ -463,24 +375,20 @@ namespace System.IO.Compression.Tar
 
             if (Size > 0)
             {
-                // Highly doubtful that a long path will be longer than int.MaxValue.
+                // Highly doubtful that a long path will be longer than int.MaxValue,
+                // considering 4096 is a common max path length.
                 Debug.Assert(Size <= int.MaxValue);
 
                 _extendedAttributes ??= new();
 
-                // Also advances the archive stream
-                //using Stream stream = CopyDataToNewStream(archiveStream, Size);
                 byte[] buffer = new byte[(int)Size];
-
                 if (archiveStream.Read(buffer.AsSpan()) != Size)
                 {
                     throw new EndOfStreamException();
                 }
 
-                string longPath = GetTrimmedUtf8String(buffer);
+                string longPath = TarHelpers.GetTrimmedUtf8String(buffer);
 
-                // The PAX attributes data section are saved with UTF8 encoding
-                //using StreamReader reader = new(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
                 using StringReader reader = new(longPath);
 
                 while (TryGetNextExtendedAttribute(reader, out string? key, out string? value))
@@ -493,7 +401,10 @@ namespace System.IO.Compression.Tar
             }
         }
 
-        // Tries to collect the next extended attribute.
+        // Tries to collect the next extended attribute from the string wrapped by the specified reader.
+        // Extended attributes are saved in the format:
+        // LENGTH KEY=VALUE\n
+        // Where LENGTH is the total number of bytes of that line, from LENGTH itself to the endline, inclusive.
         // Throws if end of stream is reached or if an attribute is malformed.
         private bool TryGetNextExtendedAttribute(StringReader reader, out string? key, out string? value)
         {
@@ -525,7 +436,9 @@ namespace System.IO.Compression.Tar
             return true;
         }
 
-        // Reads the long path found in the data section of a GNU entry of type 'K' or 'L'.
+        // Reads the long path found in the data section of a GNU entry of type 'K' or 'L'
+        // and replaces Name or LinkName, respectively, with the found string.
+        // Throws if end of stream is reached.
         private void ReadGnuLongPathDataBlock(Stream archiveStream)
         {
             Debug.Assert(TypeFlag is TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath);
@@ -542,7 +455,7 @@ namespace System.IO.Compression.Tar
                     throw new EndOfStreamException();
                 }
 
-                string longPath = GetTrimmedUtf8String(buffer);
+                string longPath = TarHelpers.GetTrimmedUtf8String(buffer);
 
                 if (TypeFlag == TarEntryTypeFlag.LongLink)
                 {
@@ -555,10 +468,12 @@ namespace System.IO.Compression.Tar
             }
         }
 
-        // If they already exist, replaces the extended attributes of the current entry with those found
-        // in the global extended attributes entry found on the first position of the current archive.
+        // Reads the extended attributes found in the passed header, which should belong to an Extended Attributes entry,
+        // and replaces any field of the current header with those found among the extended attributes, where it applies.
+        // Throws if any conversion from string to the expected data type fails.
         private void ReplaceNormalAttributesWithExtended(TarHeader extendedAttributesHeader)
         {
+            Debug.Assert(extendedAttributesHeader.TypeFlag == TarEntryTypeFlag.ExtendedAttributes);
             Debug.Assert(extendedAttributesHeader._extendedAttributes != null);
 
             Dictionary<string, string> ea = extendedAttributesHeader._extendedAttributes;
@@ -566,12 +481,12 @@ namespace System.IO.Compression.Tar
             if (ea.ContainsKey("ctime"))
             {
                 double atime = double.Parse(ea["atime"]);
-                ATime = DateTimeFromSecondsSinceEpoch(atime);
+                ATime = TarHelpers.DateTimeFromSecondsSinceEpoch(atime);
             }
             if (ea.ContainsKey("ctime"))
             {
                 double ctime = double.Parse(ea["ctime"]);
-                CTime = DateTimeFromSecondsSinceEpoch(ctime);
+                CTime = TarHelpers.DateTimeFromSecondsSinceEpoch(ctime);
             }
             if (ea.ContainsKey("gid"))
             {
@@ -627,45 +542,6 @@ namespace System.IO.Compression.Tar
             {
                 Name = previousHeader.Name;
             }
-        }
-
-        // Returns the ASCII string contained in the specified buffer of bytes,
-        // removing the trailing null or space chars.
-        private string GetTrimmedAsciiString(ReadOnlySpan<byte> buffer, bool trim = true) => GetTrimmedString(buffer, Encoding.ASCII, trim);
-
-        // Returns the UTF8 string contained in the specified buffer of bytes,
-        // removing the trailing null or space chars.
-        private string GetTrimmedUtf8String(ReadOnlySpan<byte> buffer, bool trim = true) => GetTrimmedString(buffer, Encoding.UTF8, trim);
-
-        // Returns the string contained in the specified buffer of bytes,
-        // in the specified encoding, removing the trailing null or space chars.
-        private string GetTrimmedString(ReadOnlySpan<byte> buffer, Encoding encoding, bool trim = true)
-        {
-            int trimmedLength = buffer.Length;
-            while (trim && trimmedLength > 0 && IsByteNullOrSpace(buffer[trimmedLength - 1]))
-            {
-                trimmedLength--;
-            }
-
-            return trimmedLength == 0 ? string.Empty : encoding.GetString(buffer.Slice(0, trimmedLength));
-
-            static bool IsByteNullOrSpace(byte c) => c is 0 or 32;
-        }
-
-        // Receives a byte array that represents an ASCII string containing a number in octal base.
-        // Converts the byte array to an octal base number, then transforms it to decimal base,
-        // and returns that value.
-        private int GetTenBaseNumberFromOctalAsciiChars(Span<byte> buffer)
-        {
-            string str = GetTrimmedAsciiString(buffer);
-            return string.IsNullOrEmpty(str) ? 0 : Convert.ToInt32(str, fromBase: 8);
-        }
-
-        // Returns a DateTime instance representing the number of seconds that have passed since the Unix Epoch.
-        private DateTime DateTimeFromSecondsSinceEpoch(double secondsSinceUnixEpoch)
-        {
-            DateTimeOffset offset = DateTimeOffset.UnixEpoch.AddSeconds(secondsSinceUnixEpoch);
-            return offset.DateTime;
         }
 
         // After the file contents, there may be zero or more null characters,
@@ -797,19 +673,6 @@ namespace System.IO.Compression.Tar
                     bytesDiscarded += bytesToDiscard;
                 }
             }
-        }
-
-        // Returns true if all the bytes in the specified array are nulls, false otherwise.
-        internal static bool IsAllNullBytes(byte[] array)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] != 0)
-                {
-                    return false;
-                }
-            }
-            return true;
         }
     }
 }

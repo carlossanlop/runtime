@@ -39,6 +39,7 @@
     <Compile Include="System\IO\Compression\Tar\TarEntryTypeFlag.cs" />
     <Compile Include="System\IO\Compression\Tar\TarFormat.cs" />
     <Compile Include="System\IO\Compression\Tar\TarHeader.cs" />
+    <Compile Include="System\IO\Compression\Tar\TarHelpers.cs" />
     <Compile Include="System\IO\Compression\TarArchive.cs" />
     <Compile Include="System\IO\Compression\TarArchiveEntry.cs" />
     <Compile Include="System\IO\Compression\TarArchiveEntryType.cs" />

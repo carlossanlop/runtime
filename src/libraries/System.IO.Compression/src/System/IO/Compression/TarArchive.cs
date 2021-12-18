@@ -39,7 +39,7 @@ namespace System.IO.Compression
                     }
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("TarArchiveOptions.Mode out of range.", innerException: null); // TODO
+                    throw new ArgumentOutOfRangeException($"The {nameof(TarArchiveMode)} '{Options.Mode}' is out of range.", innerException: null);
             }
 
             _archiveStream = stream;
@@ -116,10 +116,10 @@ namespace System.IO.Compression
                         // We should not expect two 'g' entries
                         if (_globalExtendedAttributes != null)
                         {
-                            throw new FormatException("Tar archive has more than one global extended attributes entry.");
+                            throw new FormatException("The archive has more than one global extended attributes entry.");
                         }
 
-                        // The extended attributes for a 'g' entry can be empty but should never be null
+                        // The extended attributes for a 'g' entry can be empty but should never be null.
                         Debug.Assert(header._extendedAttributes != null);
 
                         // Retrieving the global attributes is all we care about from a 'g' entry.
@@ -130,7 +130,11 @@ namespace System.IO.Compression
                     }
                     else
                     {
-                        header.AppendGlobalExtendedAttributesIfNeeded(_globalExtendedAttributes);
+                        if (_globalExtendedAttributes != null)
+                        {
+                            header.AppendGlobalExtendedAttributesIfNeeded(_globalExtendedAttributes);
+                        }
+
                         UpdateArchiveFormatAndStreamPosition(header);
                         return true;
                     }
@@ -153,7 +157,7 @@ namespace System.IO.Compression
             }
             else if (header.Format != _format)
             {
-                throw new FormatException("The archive contains entries in different tar formats."); // TODO
+                throw new FormatException("The archive contains entries in different formats.");
             }
         }
     }

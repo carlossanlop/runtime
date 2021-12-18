@@ -14,7 +14,7 @@ namespace System.IO.Compression
                 throw new ArgumentNullException(nameof(archiveFileName));
             }
 
-            // This check will obviously change when Create and Update are added.
+            // This check will change when additional modes are supported.
             if (mode is < TarArchiveMode.Read or > TarArchiveMode.Read)
             {
                 throw new ArgumentOutOfRangeException(nameof(mode));
@@ -32,7 +32,7 @@ namespace System.IO.Compression
                     fileShare = FileShare.Read;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("Mode out of range.", innerException: null); // TODO
+                    throw new ArgumentOutOfRangeException(nameof(mode));
             }
 
             FileStream fs = new FileStream(archiveFileName, fileMode, access, fileShare, bufferSize: 0x1000, useAsync: false);

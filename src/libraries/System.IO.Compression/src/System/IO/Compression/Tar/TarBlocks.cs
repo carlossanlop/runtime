@@ -5,7 +5,10 @@ namespace System.IO.Compression.Tar
 {
     // Reads the tar stream and stores the fields as raw bytes.
     // Supported formats:
-    // - Version 7 AT&T Unix (v7 for short). Oldest.
+    // - 1979 Version 7 AT&T Unix Tar Command Format (v7).
+    // - POSIX IEEE 1003.1-1988 Unix Standard Tar Format (ustar).
+    // - POSIX IEEE 1003.1-2001 ("POSIX.1") Pax Interchange Tar Format (pax).
+    // - GNU Tar Format (gnu).
     // Documentation: https://www.freebsd.org/cgi/man.cgi?query=tar&sektion=5
     internal struct TarBlocks
     {
@@ -30,7 +33,6 @@ namespace System.IO.Compression.Tar
         internal byte[] _gNameBytes;
         internal byte[] _devMajorBytes;
         internal byte[] _devMinorBytes;
-        internal byte[] _paddingBytes; // TODO: This can be removed
 
         // POSIX attributes
 
@@ -44,8 +46,8 @@ namespace System.IO.Compression.Tar
         internal byte[] _longNameBytes;
         internal byte[] _unusedByte;
 
-        // This field is actually a struct array with 4 items
-        // each containing two 12 byte arrays:
+        // Thes sparse field is actually an array with 4 instances
+        // of the Sparse struct, each containing two 12 byte arrays:
         // struct Sparse { byte[12] offset, byte[12] numbytes }
         internal byte[] _sparseBytes;
         internal byte[] _isExtendedByte;
@@ -58,37 +60,37 @@ namespace System.IO.Compression.Tar
         internal bool TryReadCommonAttributeBytes(Stream archiveStream)
         {
             _nameBytes = new byte[FieldLengths.Name];
-            ReadOrThrow(archiveStream, ref _nameBytes, FieldLengths.Name);
+            TarHelpers.ReadOrThrow(archiveStream, ref _nameBytes, FieldLengths.Name);
 
             _modeBytes = new byte[FieldLengths.Mode];
-            ReadOrThrow(archiveStream, ref _modeBytes, FieldLengths.Mode);
+            TarHelpers.ReadOrThrow(archiveStream, ref _modeBytes, FieldLengths.Mode);
 
             _uidBytes = new byte[FieldLengths.Uid];
-            ReadOrThrow(archiveStream, ref _uidBytes, FieldLengths.Uid);
+            TarHelpers.ReadOrThrow(archiveStream, ref _uidBytes, FieldLengths.Uid);
 
             _gidBytes = new byte[FieldLengths.Gid];
-            ReadOrThrow(archiveStream, ref _gidBytes, FieldLengths.Gid);
+            TarHelpers.ReadOrThrow(archiveStream, ref _gidBytes, FieldLengths.Gid);
 
             _sizeBytes = new byte[FieldLengths.Size];
-            ReadOrThrow(archiveStream, ref _sizeBytes, FieldLengths.Size);
+            TarHelpers.ReadOrThrow(archiveStream, ref _sizeBytes, FieldLengths.Size);
 
             _mTimeBytes = new byte[FieldLengths.MTime];
-            ReadOrThrow(archiveStream, ref _mTimeBytes, FieldLengths.MTime);
+            TarHelpers.ReadOrThrow(archiveStream, ref _mTimeBytes, FieldLengths.MTime);
 
             _checksumBytes = new byte[FieldLengths.Checksum];
-            ReadOrThrow(archiveStream, ref _checksumBytes, FieldLengths.Checksum);
+            TarHelpers.ReadOrThrow(archiveStream, ref _checksumBytes, FieldLengths.Checksum);
 
             // Empty checksum means this is an invalid (all blank) entry, finish early
-            if (TarHeader.IsAllNullBytes(_checksumBytes))
+            if (TarHelpers.IsAllNullBytes(_checksumBytes))
             {
                 return false;
             }
 
             _typeFlagByte = new byte[FieldLengths.TypeFlag];
-            ReadOrThrow(archiveStream, ref _typeFlagByte, FieldLengths.TypeFlag);
+            TarHelpers.ReadOrThrow(archiveStream, ref _typeFlagByte, FieldLengths.TypeFlag);
 
             _linkNameBytes = new byte[FieldLengths.LinkName];
-            ReadOrThrow(archiveStream, ref _linkNameBytes, FieldLengths.LinkName);
+            TarHelpers.ReadOrThrow(archiveStream, ref _linkNameBytes, FieldLengths.LinkName);
 
             return true;
         }
@@ -98,7 +100,7 @@ namespace System.IO.Compression.Tar
         internal void ReadMagicBytes(Stream archiveStream)
         {
             _magicBytes = new byte[FieldLengths.Magic];
-            ReadOrThrow(archiveStream, ref _magicBytes, FieldLengths.Magic);
+            TarHelpers.ReadOrThrow(archiveStream, ref _magicBytes, FieldLengths.Magic);
         }
 
         // Reads and stores the bytes of the version field.
@@ -106,7 +108,7 @@ namespace System.IO.Compression.Tar
         internal void ReadVersionBytes(Stream archiveStream)
         {
             _versionBytes = new byte[FieldLengths.Version];
-            ReadOrThrow(archiveStream, ref _versionBytes, FieldLengths.Version);
+            TarHelpers.ReadOrThrow(archiveStream, ref _versionBytes, FieldLengths.Version);
         }
 
         // Reads and stores bytes of fields found in the POSIX and GNU formats.
@@ -114,16 +116,16 @@ namespace System.IO.Compression.Tar
         internal void ReadPosixAndGnuSharedAttributeBytes(Stream archiveStream)
         {
             _uNameBytes = new byte[FieldLengths.UName];
-            ReadOrThrow(archiveStream, ref _uNameBytes, FieldLengths.UName);
+            TarHelpers.ReadOrThrow(archiveStream, ref _uNameBytes, FieldLengths.UName);
 
             _gNameBytes = new byte[FieldLengths.GName];
-            ReadOrThrow(archiveStream, ref _gNameBytes, FieldLengths.GName);
+            TarHelpers.ReadOrThrow(archiveStream, ref _gNameBytes, FieldLengths.GName);
 
             _devMajorBytes = new byte[FieldLengths.DevMajor];
-            ReadOrThrow(archiveStream, ref _devMajorBytes, FieldLengths.DevMajor);
+            TarHelpers.ReadOrThrow(archiveStream, ref _devMajorBytes, FieldLengths.DevMajor);
 
             _devMinorBytes = new byte[FieldLengths.DevMinor];
-            ReadOrThrow(archiveStream, ref _devMinorBytes, FieldLengths.DevMinor);
+            TarHelpers.ReadOrThrow(archiveStream, ref _devMinorBytes, FieldLengths.DevMinor);
         }
 
         // Reads and stores bytes of fields found in the GNU format.
@@ -131,28 +133,28 @@ namespace System.IO.Compression.Tar
         internal void ReadGnuAttributeBytes(Stream archiveStream)
         {
             _atimeBytes = new byte[FieldLengths.ATime];
-            ReadOrThrow(archiveStream, ref _atimeBytes, FieldLengths.ATime);
+            TarHelpers.ReadOrThrow(archiveStream, ref _atimeBytes, FieldLengths.ATime);
 
             _ctimeBytes = new byte[FieldLengths.CTime];
-            ReadOrThrow(archiveStream, ref _ctimeBytes, FieldLengths.CTime);
+            TarHelpers.ReadOrThrow(archiveStream, ref _ctimeBytes, FieldLengths.CTime);
 
             _offsetBytes = new byte[FieldLengths.Offset];
-            ReadOrThrow(archiveStream, ref _offsetBytes, FieldLengths.Offset);
+            TarHelpers.ReadOrThrow(archiveStream, ref _offsetBytes, FieldLengths.Offset);
 
             _longNameBytes = new byte[FieldLengths.LongNames];
-            ReadOrThrow(archiveStream, ref _longNameBytes, FieldLengths.LongNames);
+            TarHelpers.ReadOrThrow(archiveStream, ref _longNameBytes, FieldLengths.LongNames);
 
             _unusedByte = new byte[FieldLengths.Unused];
-            ReadOrThrow(archiveStream, ref _unusedByte, FieldLengths.Unused);
+            TarHelpers.ReadOrThrow(archiveStream, ref _unusedByte, FieldLengths.Unused);
 
             _sparseBytes = new byte[FieldLengths.Sparse];
-            ReadOrThrow(archiveStream, ref _sparseBytes, FieldLengths.Sparse);
+            TarHelpers.ReadOrThrow(archiveStream, ref _sparseBytes, FieldLengths.Sparse);
 
             _isExtendedByte = new byte[FieldLengths.IsExtended];
-            ReadOrThrow(archiveStream, ref _isExtendedByte, FieldLengths.IsExtended);
+            TarHelpers.ReadOrThrow(archiveStream, ref _isExtendedByte, FieldLengths.IsExtended);
 
             _realSizeBytes = new byte[FieldLengths.RealSize];
-            ReadOrThrow(archiveStream, ref _realSizeBytes, FieldLengths.RealSize);
+            TarHelpers.ReadOrThrow(archiveStream, ref _realSizeBytes, FieldLengths.RealSize);
         }
 
         // Reads and stores bytes of the POSIX prefix attribute.
@@ -160,7 +162,7 @@ namespace System.IO.Compression.Tar
         internal void ReadPosixPrefixAttributeBytes(Stream archiveStream)
         {
             _prefixBytes = new byte[FieldLengths.Prefix];
-            ReadOrThrow(archiveStream, ref _prefixBytes, FieldLengths.Prefix);
+            TarHelpers.ReadOrThrow(archiveStream, ref _prefixBytes, FieldLengths.Prefix);
         }
 
         // Reads and stores bytes of the V7 padding.
@@ -175,28 +177,20 @@ namespace System.IO.Compression.Tar
 
         // Reads and stores bytes of a POSIX padding.
         // Throws if end of stream is reached.
-        internal void ReadPosixPaddingBytes(Stream archiveStream) => ReadPaddingBytes(archiveStream, FieldLengths.PosixPadding);
+        internal void ReadPosixPaddingBytes(Stream archiveStream) =>
+            ReadPaddingBytes(archiveStream, FieldLengths.PosixPadding);
 
         // Reads and stores bytes of the GNU padding.
         // Throws if end of stream is reached.
-        internal void ReadGnuPaddingBytes(Stream archiveStream) => ReadPaddingBytes(archiveStream, FieldLengths.GnuPadding);
+        internal void ReadGnuPaddingBytes(Stream archiveStream) =>
+            ReadPaddingBytes(archiveStream, FieldLengths.GnuPadding);
 
         // Reads and stores bytes of a padding field of the specified length.
         // Throws if end of stream is reached.
         private void ReadPaddingBytes(Stream archiveStream, ushort length)
         {
-            _paddingBytes = new byte[length];
-            ReadOrThrow(archiveStream, ref _paddingBytes, length);
-        }
-
-        // Reads the specified number of bytes and stores it in the byte buffer passed by reference.
-        // Throws if end of stream is reached.
-        private void ReadOrThrow(Stream archiveStream, ref byte[] buffer, int bytesToRead)
-        {
-            if (archiveStream.Read(buffer.AsSpan()) != bytesToRead)
-            {
-                throw new EndOfStreamException();
-            }
+            byte[] padding = new byte[length];
+            TarHelpers.ReadOrThrow(archiveStream, ref padding, length);
         }
 
         internal struct FieldLengths
