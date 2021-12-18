@@ -93,15 +93,7 @@ namespace System.IO.Compression.Tar
             }
             else if (header.Format == TarFormat.Gnu)
             {
-                if (header.TypeFlag is TarEntryTypeFlag.DirectoryEntry)
-                {
-                    // The DirectoryEntry typeflag is a Directory typeflag but with the list of
-                    // filesystem entries it contains saved in the data section.
-                    // Such data is currently not processed, so DirectoryEntry should be
-                    // treated as a Directory typeflag.
-                    header.TypeFlag = TarEntryTypeFlag.Directory;
-                }
-                else if (header.TypeFlag is TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
+                if (header.TypeFlag is TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
                 {
                     // LongLink and LongPath are metadata entries.
                     // They contain a very long path in their data section.
@@ -241,7 +233,7 @@ namespace System.IO.Compression.Tar
                 {
                     Format = TarFormat.Pax;
                 }
-                else if (TypeFlag is TarEntryTypeFlag.DirectoryEntry or TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath)
+                else if (TypeFlag is TarEntryTypeFlag.DirectoryEntry or TarEntryTypeFlag.LongLink or TarEntryTypeFlag.LongPath or TarEntryTypeFlag.Contiguous)
                 {
                     Format = TarFormat.Gnu;
                 }
