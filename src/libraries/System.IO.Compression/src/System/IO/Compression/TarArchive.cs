@@ -39,7 +39,7 @@ namespace System.IO.Compression
                     }
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"The {nameof(TarArchiveMode)} '{Options.Mode}' is out of range.", innerException: null);
+                    throw new ArgumentOutOfRangeException(string.Format(SR.TarArchiveModeOutOfRange, Options.Mode), innerException: null);
             }
 
             _archiveStream = stream;
@@ -116,7 +116,7 @@ namespace System.IO.Compression
                         // We should not expect two 'g' entries
                         if (_globalExtendedAttributes != null)
                         {
-                            throw new FormatException("The archive has more than one global extended attributes entry.");
+                            throw new FormatException(SR.TarTooManyGlobalExtendedAttributesEntries);
                         }
 
                         // The extended attributes for a 'g' entry can be empty but should never be null.
@@ -157,7 +157,7 @@ namespace System.IO.Compression
             }
             else if (header.Format != _format)
             {
-                throw new FormatException("The archive contains entries in different formats.");
+                throw new FormatException(SR.TarEntriesInDifferentFormats);
             }
         }
     }

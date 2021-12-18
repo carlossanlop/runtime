@@ -175,21 +175,18 @@ namespace System.IO.Compression.Tar
                 // Fields that ustar, pax and gnu share identically
                 ReadPosixAndGnuSharedAttributes(archiveStream);
 
-                if (Format == TarFormat.Pax)
+                Debug.Assert(Format is TarFormat.Ustar or TarFormat.Pax or TarFormat.Gnu);
+                if (Format == TarFormat.Ustar)
+                {
+                    ReadUstarAttributes(archiveStream);
+                }
+                else if (Format == TarFormat.Pax)
                 {
                     ReadPaxAttributes(archiveStream);
                 }
                 else if (Format == TarFormat.Gnu)
                 {
                     ReadGnuAttributes(archiveStream);
-                }
-                else if (Format == TarFormat.Ustar)
-                {
-                    ReadUstarAttributes(archiveStream);
-                }
-                else
-                {
-                    throw new NotSupportedException("Unrecognized tar format.");
                 }
             }
 
@@ -233,7 +230,7 @@ namespace System.IO.Compression.Tar
                             TarEntryTypeFlag.Sparse or
                             TarEntryTypeFlag.TapeVolume)
             {
-                throw new NotSupportedException($"Entry type not supported: {TypeFlag}");
+                throw new NotSupportedException(string.Format(SR.TarEntryTypeNotSupported, TypeFlag));
             }
 
             LinkName = TarHelpers.GetTrimmedUtf8String(_blocks._linkNameBytes);
@@ -300,12 +297,12 @@ namespace System.IO.Compression.Tar
                 // The POSIX formats have a 6 byte Magic "ustar\0", followed by a 2 byte Version "00"
                 if ((Format is TarFormat.Ustar or TarFormat.Pax) && Version != UstarVersion)
                 {
-                    throw new FormatException($"A POSIX format was expected, but could not be reliably determined for entry {Name}");
+                    throw new FormatException(string.Format(SR.TarPosixFormatExpected, Name));
                 }
                 // The GNU format has a Magic+Version 8 byte string "ustar  \0"
                 else if (Format == TarFormat.Gnu && Version != GnuVersion)
                 {
-                    throw new FormatException($"A GNU format was expected, but could not be reliably determined for entry {Name}");
+                    throw new FormatException(string.Format(SR.TarGnuFormatExpected, Name));
                 }
             }
         }

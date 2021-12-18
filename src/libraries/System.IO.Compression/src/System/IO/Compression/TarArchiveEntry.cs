@@ -41,7 +41,7 @@ namespace System.IO.Compression
                     TarEntryTypeFlag.Fifo => TarArchiveEntryType.Fifo,
                     TarEntryTypeFlag.Block => TarArchiveEntryType.BlockDevice,
                     TarEntryTypeFlag.Character => TarArchiveEntryType.CharacterDevice,
-                    _ => throw new NotSupportedException($"Unsupported entry type: {_header.TypeFlag}"),
+                    _ => throw new NotSupportedException(string.Format(SR.TarEntryTypeNotSupported, _header.TypeFlag)),
                 };
             }
         }
@@ -64,7 +64,7 @@ namespace System.IO.Compression
                 case TarArchiveMode.Read:
                     return OpenInReadMode();
                 default:
-                    throw new ArgumentOutOfRangeException($"The {nameof(TarArchiveMode)} '{_archive.Options.Mode}' is out of range.", innerException: null);
+                    throw new ArgumentOutOfRangeException(string.Format(SR.TarArchiveModeOutOfRange, _archive.Options.Mode), innerException: null);
             }
         }
 
