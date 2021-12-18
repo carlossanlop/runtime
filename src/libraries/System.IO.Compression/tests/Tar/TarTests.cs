@@ -252,7 +252,7 @@ namespace System.IO.Compression.Tests
         private void VerifyPaxGlobalExtendedAttributes(TarArchiveEntry entry)
         {
             Assert.NotNull(entry.ExtendedAttributes);
-            Assert.True(entry.ExtendedAttributes.ContainsKey(TestGlobalExtendedAttributeKey), $"Global extended attribute not found in entry '{entry.Name}'");
+            Assert.True(entry.ExtendedAttributes.ContainsKey(TestGlobalExtendedAttributeKey), $"Global extended attribute '{TestGlobalExtendedAttributeKey}' was not found in entry '{entry.Name}'.");
             Assert.Equal(TestGlobalExtendedAttributeValue, entry.ExtendedAttributes[TestGlobalExtendedAttributeKey]);
         }
 
