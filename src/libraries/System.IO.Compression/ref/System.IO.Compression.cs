@@ -103,6 +103,9 @@ namespace System.IO.Compression
         public System.Collections.Generic.IReadOnlyDictionary<string, string>? ExtendedAttributes { get { throw null; } }
         public int Gid { get { throw null; } }
         public string? GName { get { throw null; } }
+        public System.DateTime LastAccessTime { get { throw null; } }
+        public System.DateTime LastChangeTime { get { throw null; } }
+        public System.DateTime LastModificationTime { get { throw null; } }
         public long Length { get { throw null; } }
         public string LinkName { get { throw null; } }
         public int Mode { get { throw null; } }
