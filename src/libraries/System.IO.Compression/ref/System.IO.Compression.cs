@@ -86,7 +86,7 @@ namespace System.IO.Compression
         public override System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
         public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
     }
-    public class TarArchive : IDisposable
+    public class TarArchive : System.IDisposable
     {
         public System.IO.Compression.TarArchiveOptions Options { get { throw null; } }
         public TarArchive(System.IO.Stream stream, System.IO.Compression.TarArchiveOptions? options) { }
