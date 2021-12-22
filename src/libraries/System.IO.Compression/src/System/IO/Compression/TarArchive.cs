@@ -48,6 +48,25 @@ namespace System.IO.Compression
             _format = TarFormat.Unknown;
         }
 
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing && !Options.LeaveOpen)
+                {
+                    _archiveStream.Dispose();
+                }
+
+                _isDisposed = true;
+            }
+        }
+
         public TarArchiveEntry? GetNextEntry()
         {
             ThrowIfDisposed();
@@ -67,25 +86,6 @@ namespace System.IO.Compression
             }
 
             return entry;
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_isDisposed)
-            {
-                if (disposing && !Options.LeaveOpen)
-                {
-                    _archiveStream.Dispose();
-                }
-
-                _isDisposed = true;
-            }
         }
 
         private void AddEntry(TarArchiveEntry entry)
