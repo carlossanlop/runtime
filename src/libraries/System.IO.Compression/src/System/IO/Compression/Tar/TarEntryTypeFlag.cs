@@ -25,9 +25,9 @@ namespace System.IO.Compression.Tar
         Sparse = 'S',
         TapeVolume = 'V',
 
-
-        // GNU entry types currently not implemented/supported:
-        // - Contiguous file: 7 - should be treated as 0, it's extremely rare to handle it as contiguous.
+        // Notes:
+        // We treat a Contiguous entry (7) as a Normal file (0). According to the GNU spec, it's extremely rare to encounter a contiguous entry.
+        // The following GNU entry types are currently unsupported:
         // - Multi-volume file: M
         // - File to be renamed/symlinked: N - unsafe and already ignored by other tools.
         // - Sparse regular file: S
