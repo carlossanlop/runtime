@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)-windows;$(NetCoreAppCurrent)-unix;$(NetCoreAppCurrent)-browser;$(NetCoreAppCurrent)-wasi;$(NetCoreAppCurrent)</TargetFrameworks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- DesignTimeBuild requires all the TargetFramework Derived Properties to not be present in the first property group. -->
+  <PropertyGroup>
+    <TargetPlatformIdentifier>$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</TargetPlatformIdentifier>
+    <GeneratePlatformNotSupportedAssemblyMessage Condition="'$(TargetPlatformIdentifier)' == ''">SR.PlatformNotSupported_Compression</GeneratePlatformNotSupportedAssemblyMessage>
+    </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' != ''">
+    <Compile Include="System\Formats\Zip\BitFlagValues.cs" />
+    <Compile Include="System\Formats\Zip\CompressionMethodValues.cs" />
+    <Compile Include="System\Formats\Zip\Crc32Helper.ZLib.cs" />
+    <Compile Include="System\Formats\Zip\Zip64EndOfCentralDirectoryLocator.cs" />
+    <Compile Include="System\Formats\Zip\Zip64EndOfCentralDirectoryRecord.cs" />
+    <Compile Include="System\Formats\Zip\Zip64ExtraField.cs" />
+    <Compile Include="System\Formats\Zip\ZipCentralDirectoryFileHeader.cs" />
+    <Compile Include="System\Formats\Zip\ZipEndOfCentralDirectoryBlock.cs" />
+    <Compile Include="System\Formats\Zip\ZipEntry.cs" />
+    <Compile Include="System\Formats\Zip\ZipGenericExtraField.cs" />
+    <Compile Include="System\Formats\Zip\ZipLocalFileHeader.cs" />
+    <Compile Include="System\Formats\Zip\ZipReader.cs" />
+    <Compile Include="System\Formats\Zip\ZipVersionMadeByPlatform.cs" />
+    <Compile Include="System\Formats\Zip\ZipVersionNeededValues.cs" />
+    <Compile Include="System\Formats\Zip\ZipWriter.cs" />
+    <Compile Include="$(CommonPath)Interop\Interop.zlib.cs" Link="Common\Interop\Interop.zlib.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZipCustomStreams.cs" Link="Common\System\IO\Compression\ZipCustomStreams.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZipHelper.cs" Link="Common\System\IO\Compression\ZipHelper.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZipVersion.cs" Link="Common\System\IO\Compression\ZipVersion.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZLibNative.cs" Link="Common\System\IO\Compression\ZLibNative.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZLibNative.ZStream.cs" Link="Common\System\IO\Compression\ZLibNative.ZStream.cs" />
+  </ItemGroup>
+  
+  <!-- Windows specific files -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <Compile Include="System\Formats\Zip\ZipEntry.Windows.cs" />
+    <Compile Include="$(CommonPath)Interop\Windows\Interop.Libraries.cs" Link="Common\Interop\Windows\Interop.Libraries.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZipArchiveEntryConstants.Windows.cs" Link="Common\System\IO\Compression\ZipArchiveEntryCostants.Windows.cs" />
+  </ItemGroup>
+
+  <!-- Unix specific files -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'unix' or '$(TargetPlatformIdentifier)' == 'browser' or '$(TargetPlatformIdentifier)' == 'wasi'">
+    <Compile Include="System\Formats\Zip\ZipEntry.Unix.cs" />
+    <Compile Include="$(CommonPath)Interop\Unix\Interop.Libraries.cs" Link="Common\Interop\Unix\Interop.Libraries.cs" />
+    <Compile Include="$(CommonPath)System\IO\Compression\ZipArchiveEntryConstants.Unix.cs" Link="Common\System\IO\Compression\ZipArchiveEntryConstants.Unix.cs" />
+  </ItemGroup>
+
+</Project>
