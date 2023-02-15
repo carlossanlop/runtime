@@ -44,8 +44,6 @@ public partial class ZipEntry
     private readonly CompressionLevel? _compressionLevel;
     private ZipReader? _readerOfOrigin;
 
-    private static readonly bool s_allowLargeZipArchiveEntriesInUpdateMode = IntPtr.Size > 4;
-
     internal ZipEntry(ZipReader readerOfOrigin, ZipCentralDirectoryFileHeader cd)
     {
         _readerOfOrigin = readerOfOrigin;
@@ -258,13 +256,13 @@ public partial class ZipEntry
         {
             if (_storedOffsetOfCompressedData == null)
             {
-                Debug.Assert(_archive.ArchiveReader != null);
-                _archive.ArchiveStream.Seek(_offsetOfLocalHeader, SeekOrigin.Begin);
+                Debug.Assert(_readerOfOrigin.ArchiveReader != null);
+                _readerOfOrigin.ArchiveStream.Seek(_offsetOfLocalHeader, SeekOrigin.Begin);
                 // by calling this, we are using local header _storedEntryNameBytes.Length and extraFieldLength
                 // to find start of data, but still using central directory size information
-                if (!ZipLocalFileHeader.TrySkipBlock(_archive.ArchiveReader))
+                if (!ZipLocalFileHeader.TrySkipBlock(_readerOfOrigin.ArchiveReader))
                     throw new InvalidDataException(SR.LocalFileHeaderCorrupt);
-                _storedOffsetOfCompressedData = _archive.ArchiveStream.Position;
+                _storedOffsetOfCompressedData = _readerOfOrigin.ArchiveStream.Position;
             }
             return _storedOffsetOfCompressedData.Value;
         }
