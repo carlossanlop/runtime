@@ -165,6 +165,9 @@
   <data name="LengthAfterWrite" xml:space="preserve">
     <value>Length properties are unavailable once an entry has been opened for writing.</value>
   </data>
+  <data name="LocalFileHeaderCorrupt" xml:space="preserve">
+    <value>A local file header is corrupt.</value>
+  </data>
   <data name="NumEntriesWrong" xml:space="preserve">
     <value>Number of entries expected in End Of Central Directory does not correspond to number of entries in Central Directory.</value>
   </data>

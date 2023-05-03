@@ -23,12 +23,13 @@ public class ZipReader
     private long _expectedNumberOfEntries;
     private byte[] _archiveComment;
 
-    private BinaryReader? _archiveReader;
-    private Stream _archiveStream;
     private List<ZipEntry> _entries;
     private ReadOnlyCollection<ZipEntry> _entriesCollection;
     private Dictionary<string, ZipEntry> _entriesDictionary;
     private Encoding? _entryNameAndCommentEncoding;
+
+    internal Stream _archiveStream;
+    internal BinaryReader? _archiveReader;
 
     public ZipReader(Stream archiveStream, Encoding? entryNameAndCommentEncoding, bool leaveOpen)
     {

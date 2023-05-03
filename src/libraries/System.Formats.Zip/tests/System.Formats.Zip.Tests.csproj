@@ -1,5 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
 <PropertyGroup>
     <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
 </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\src\System.Formats.Zip.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(CommonTestPath)StreamConformanceTests\StreamConformanceTests.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Compression.TestData" Version="$(SystemIOCompressionTestDataVersion)" />
+  </ItemGroup>
+  
 </Project>
