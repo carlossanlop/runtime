@@ -284,6 +284,44 @@
       <HelixCorrelationPayload Condition="$(TargetRuntimeIdentifier.ToLowerInvariant().StartsWith('linux-bionic'))" Include="openssl" Uri="https://netcorenativeassets.blob.core.windows.net/resource-packages/external/android/openssl-1.1.1l-beta-1.zip" Destination="openssl" />
     </ItemGroup>
 
+    <PropertyGroup Condition="'$(TargetOS)' != 'browser' and '$(TargetOS)' != 'wasi' and '$(TargetOS)' != 'ios' and '$(TargetOS)' != 'iossimulator' and '$(TargetOS)' != 'tvos' and '$(TargetOS)' != 'tvossimulator' and '$(TargetOS)' != 'maccatalyst' and '$(TargetOS)' != 'android'">
+      <CoreRootDirectory>$(TestBinDir)Tests\Core_Root\</CoreRootDirectory>
+      <CoreRootDirectory>$([MSBuild]::NormalizeDirectory($(CoreRootDirectory)))</CoreRootDirectory>
+      <XUnitLogCheckerDirectory>$(TestBinDir)Common\XUnitLogChecker\</XUnitLogCheckerDirectory>
+      <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory($(XUnitLogCheckerDirectory)))</XUnitLogCheckerDirectory>
+      <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' != 'true'">dotnet %24HELIX_CORRELATION_PAYLOAD/XUnitLogChecker/</XUnitLogCheckerHelixPath>
+      <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' == 'true'">dotnet %25HELIX_CORRELATION_PAYLOAD%25/XUnitLogChecker/</XUnitLogCheckerHelixPath>
+      <XUnitLogCheckerArgs>$(_MergedWrapperRunScriptDirectoryRelative) $(_MergedWrapperName)</XUnitLogCheckerArgs>
+      <XUnitLogCheckerArgs Condition="'$(TestWrapperTargetsWindows)' != 'true'">$(XUnitLogCheckerArgs) %24HELIX_DUMP_FOLDER</XUnitLogCheckerArgs>
+      <XUnitLogCheckerArgs Condition="'$(TestWrapperTargetsWindows)' == 'true'">$(XUnitLogCheckerArgs) %25HELIX_DUMP_FOLDER%25</XUnitLogCheckerArgs>
+      <XUnitLogCheckerCommand>dotnet $(XUnitLogCheckerHelixPath)XUnitLogChecker.dll $(XUnitLogCheckerArgs)</XUnitLogCheckerCommand>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(TargetOS)' != 'browser' and '$(TargetOS)' != 'wasi' and '$(TargetOS)' != 'ios' and '$(TargetOS)' != 'iossimulator' and '$(TargetOS)' != 'tvos' and '$(TargetOS)' != 'tvossimulator' and '$(TargetOS)' != 'maccatalyst' and '$(TargetOS)' != 'android'">
+      <!-- Add the XUnitLogChecker's running command and store its exit code. -->
+      <HelixCommandLines Include="$(XUnitLogCheckerCommand)" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' == 'true'" Include="set xunitlogchecker_exit_code=%25ERRORLEVEL%25" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="xunitlogchecker_exit_code=%24%3F" />
+
+      <!--
+        Check both exit codes, the test's and XUnitLogChecker's. If any of them failed, then we return that one, with the
+        test's taking priority (i.e. if the test failed, we return that one regardless of how things went with the log checker).
+        Full description in the reasoning of this is in the comment above about GH issue #85056.
+        Note that you can not use "exit" or the shell will exit and the HelixPostCommands will not run.
+      -->
+
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' == 'true'" Include="set result_exit_code=0" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' == 'true'" Include="if %25xunitlogchecker_exit_code%25 NEQ 0 set result_exit_code=%25xunitlogchecker_exit_code%25" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' == 'true'" Include="if %25test_exit_code%25 NEQ 0 set result_exit_code=%25test_exit_code%25" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' == 'true'" Include="%25ComSpec%25 /C exit %25result_exit_code%25" />
+
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="result_exit_code=0" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="if [ %24xunitlogchecker_exit_code -ne 0 ]%3B then result_exit_code=%24xunitlogchecker_exit_code%3B fi" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="if [ %24test_exit_code -ne 0 ]%3B then result_exit_code=%24test_exit_code%3B fi" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="set_return() { return $1; }" />
+      <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="set_return %24result_exit_code" />
+    </ItemGroup>
+
     <ItemGroup Condition="'$(EnableDefaultBuildHelixWorkItems)' == 'true'">
       <HelixCorrelationPayload Include="$(HelixCorrelationPayload)"
                                Condition="'$(IncludeHelixCorrelationPayload)' == 'true'"
