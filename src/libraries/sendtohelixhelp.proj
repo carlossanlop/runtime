@@ -289,10 +289,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-      <CoreRootDirectory>$(TestBinDir)Tests\Core_Root\</CoreRootDirectory>
-      <CoreRootDirectory>$([MSBuild]::NormalizeDirectory($(CoreRootDirectory)))</CoreRootDirectory>
-      <XUnitLogCheckerDirectory>$(TestBinDir)Common\XUnitLogChecker\</XUnitLogCheckerDirectory>
-      <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory($(XUnitLogCheckerDirectory)))</XUnitLogCheckerDirectory>
+      <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/coreclr/$(TargetOS).$(TargetArchitecture).$(Configuration)/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
       <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' != 'true'">dotnet %24HELIX_CORRELATION_PAYLOAD/XUnitLogChecker/</XUnitLogCheckerHelixPath>
       <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' == 'true'">dotnet %25HELIX_CORRELATION_PAYLOAD%25/XUnitLogChecker/</XUnitLogCheckerHelixPath>
       <XUnitLogCheckerArgs>$(_MergedWrapperRunScriptDirectoryRelative) $(_MergedWrapperName)</XUnitLogCheckerArgs>
