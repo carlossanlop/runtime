@@ -321,6 +321,8 @@
       <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="if [ %24test_exit_code -ne 0 ]%3B then result_exit_code=%24test_exit_code%3B fi" />
       <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="set_return() { return $1; }" />
       <HelixCommandLines Condition="'$(TestWrapperTargetsWindows)' != 'true'" Include="set_return %24result_exit_code" />
+
+      <HelixCorrelationPayload Include="$(XUnitLogCheckerDirectory)" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(EnableDefaultBuildHelixWorkItems)' == 'true'">
