@@ -18,7 +18,7 @@ parameters:
   SuperPmiCollectionName: ''
 
 steps:
-  - script: $(Build.SourcesDirectory)/.dotnet/dotnet build -c Release -a {{ parameters.archType }} $(Build.SourcesDirectory)/src/tests/Common/XUnitLogChecker/XUnitLogChecker.csproj
+  - script: $(Build.SourcesDirectory)/.dotnet/dotnet build -c Release -a ${{ parameters.archType }} $(Build.SourcesDirectory)/src/tests/Common/XUnitLogChecker/XUnitLogChecker.csproj
     displayName: Build XUnitLogChecker
     continueOnError: false
 
