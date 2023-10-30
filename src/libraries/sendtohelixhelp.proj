@@ -290,13 +290,12 @@
 
     <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
       <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
-      <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' != 'true'">dotnet %24HELIX_CORRELATION_PAYLOAD/XUnitLogChecker/</XUnitLogCheckerHelixPath>
-      <XUnitLogCheckerHelixPath Condition="'$(WindowsShell)' == 'true'">dotnet %25HELIX_CORRELATION_PAYLOAD%25/XUnitLogChecker/</XUnitLogCheckerHelixPath>
-      <XUnitLogCheckerArgs>$(_MergedWrapperRunScriptDirectoryRelative) $(_MergedWrapperName)</XUnitLogCheckerArgs>
-      <XUnitLogCheckerArgs Condition="'$(TargetOS)' != 'windows'">$(XUnitLogCheckerArgs) %24HELIX_DUMP_FOLDER</XUnitLogCheckerArgs>
-      <XUnitLogCheckerArgs Condition="'$(TargetOS)' == 'windows'">$(XUnitLogCheckerArgs) %25HELIX_DUMP_FOLDER%25</XUnitLogCheckerArgs>
-      <XUnitLogCheckerCommand>dotnet $(XUnitLogCheckerHelixPath)XUnitLogChecker.dll $(XUnitLogCheckerArgs)</XUnitLogCheckerCommand>
+      <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' != 'windows'">%24HELIX_DUMP_FOLDER</XUnitLogCheckerDumpsPath>
+      <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' == 'windows'">%25HELIX_DUMP_FOLDER%25</XUnitLogCheckerDumpsPath>
+      <XUnitLogCheckerCommand>dotnet $(XUnitLogCheckerDirectory)XUnitLogChecker.dll --dumps-path $(XUnitLogCheckerDumpsPath)</XUnitLogCheckerCommand>
     </PropertyGroup>
+    
+    <Message Importance="High" Text="--- DEBUG --- XUNITLOGCHECKERCOMMAND: $(XUnitLogCheckerCommand)" />
 
     <ItemGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
       <!-- Add the XUnitLogChecker's running command and store its exit code. -->
@@ -324,6 +323,13 @@
 
       <HelixCorrelationPayload Include="$(XUnitLogCheckerDirectory)" />
     </ItemGroup>
+
+    <PropertyGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
+      <HelixPostCommands>$(HelixPostCommands);@(HelixCommandLines)</HelixPostCommands>
+    </PropertyGroup>
+
+    <Message Importance="High" Text="--- DEBUG --- HELIXPRECOMMANDS: $(HelixPreCommands)" />
+    <Message Importance="High" Text="--- DEBUG --- HELIXPOSTCOMMANDS: $(HelixPostCommands)" />
 
     <ItemGroup Condition="'$(EnableDefaultBuildHelixWorkItems)' == 'true'">
       <HelixCorrelationPayload Include="$(HelixCorrelationPayload)"
