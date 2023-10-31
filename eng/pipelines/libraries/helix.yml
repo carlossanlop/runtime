@@ -17,11 +17,6 @@ parameters:
   SuperPmiCollectionType: ''
   SuperPmiCollectionName: ''
 
-steps:
-  - script: $(Build.SourcesDirectory)/.dotnet/dotnet build -c Release $(Build.SourcesDirectory)/src/tests/Common/XUnitLogChecker/XUnitLogChecker.csproj /p:OutDir=$(Build.SourcesDirectory)/artifacts/tests/Common/XUnitLogChecker
-    displayName: Build XUnitLogChecker
-    continueOnError: false
-
   - script: $(_msbuildCommand) $(_warnAsErrorParamHelixOverride) -restore
             $(Build.SourcesDirectory)/src/libraries/sendtohelix.proj
             /p:RuntimeFlavor=${{ parameters.runtimeFlavor }}
