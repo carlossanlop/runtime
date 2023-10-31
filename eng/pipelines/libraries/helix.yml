@@ -17,7 +17,7 @@ parameters:
   SuperPmiCollectionType: ''
   SuperPmiCollectionName: ''
 
-- steps:
+steps:
   - script: $(_msbuildCommand) $(_warnAsErrorParamHelixOverride) -restore
             $(Build.SourcesDirectory)/src/libraries/sendtohelix.proj
             /p:RuntimeFlavor=${{ parameters.runtimeFlavor }}
