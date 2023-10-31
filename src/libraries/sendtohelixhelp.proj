@@ -292,11 +292,11 @@
       <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
       <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' != 'windows'">%24HELIX_DUMP_FOLDER</XUnitLogCheckerDumpsPath>
       <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' == 'windows'">%25HELIX_DUMP_FOLDER%25</XUnitLogCheckerDumpsPath>
-      <XUnitLogCheckerCommand>dotnet $(XUnitLogCheckerDirectory)XUnitLogChecker.dll --dumps-path $(XUnitLogCheckerDumpsPath)</XUnitLogCheckerCommand>
+      <XUnitLogCheckerExecutable Condition="'$(TargetOS)' != 'windows'">./$(XUnitLogCheckerDirectory)XUnitLogChecker</XUnitLogCheckerExecutable>
+      <XUnitLogCheckerExecutable Condition="'$(TargetOS)' == 'windows'">$(XUnitLogCheckerDirectory)XUnitLogChecker.exe</XUnitLogCheckerExecutable>
+      <XUnitLogCheckerCommand>$(XUnitLogCheckerExecutable) --dumps-path $(XUnitLogCheckerDumpsPath)</XUnitLogCheckerCommand>
     </PropertyGroup>
     
-    <Message Importance="High" Text="--- DEBUG --- XUNITLOGCHECKERCOMMAND: $(XUnitLogCheckerCommand)" />
-
     <ItemGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
       <!-- Add the XUnitLogChecker's running command and store its exit code. -->
       <HelixCommandLines Include="$(XUnitLogCheckerCommand)" />
