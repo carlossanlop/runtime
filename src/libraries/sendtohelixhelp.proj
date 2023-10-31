@@ -175,7 +175,6 @@
     <HelixPostCommand Include="docker rmi -f grpc-server:latest" />
   </ItemGroup>
 
-
   <!-- Ensure that all HelixPreCommand items are ready before this -->
   <Target Name="BuildHelixCommand">
     <!-- setting DotNetCliVersion here to ensure that it is set to the intended value -->
@@ -233,6 +232,15 @@
     </ItemGroup>
   </Target>
 
+  <PropertyGroup>
+    <IsTargetOSSupportedByXUnitLogChecker Condition="'$(TargetOS)' != 'browser' and '$(TargetOS)' != 'wasi' and '$(TargetOS)' != 'ios' and '$(TargetOS)' != 'iossimulator' and '$(TargetOS)' != 'tvos' and '$(TargetOS)' != 'tvossimulator' and '$(TargetOS)' != 'maccatalyst' and '$(TargetOS)' != 'android'">true</IsTargetOSSupportedByXUnitLogChecker>
+    <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
+  </PropertyGroup>
+
+  <Target Name="BuildXUnitLogChecker" BeforeTargets="BuildHelixWorkItems" Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
+    <MSBuild Projects="tests/Common/XUnitLogChecker/XUnitLogChecker.csproj" Targets="Build" Properties="Configuration=Release;OutDir=$(XUnitLogCheckerDirectory)" />
+  </Target>
+
   <!--
     Create all the Helix data to start a set of jobs. Create a set of work items, one for each libraries
     test assembly. All will have the same command line. Note that this target is listed in the
@@ -284,21 +292,19 @@
       <HelixCorrelationPayload Condition="$(TargetRuntimeIdentifier.ToLowerInvariant().StartsWith('linux-bionic'))" Include="openssl" Uri="https://netcorenativeassets.blob.core.windows.net/resource-packages/external/android/openssl-1.1.1l-beta-1.zip" Destination="openssl" />
     </ItemGroup>
 
-    <PropertyGroup>
-      <IsTargetOSSupportedByXUnitLogChecker Condition="'$(TargetOS)' != 'browser' and '$(TargetOS)' != 'wasi' and '$(TargetOS)' != 'ios' and '$(TargetOS)' != 'iossimulator' and '$(TargetOS)' != 'tvos' and '$(TargetOS)' != 'tvossimulator' and '$(TargetOS)' != 'maccatalyst' and '$(TargetOS)' != 'android'">true</IsTargetOSSupportedByXUnitLogChecker>
-    </PropertyGroup>
-
     <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-      <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
       <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' != 'windows'">%24HELIX_DUMP_FOLDER</XUnitLogCheckerDumpsPath>
       <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' == 'windows'">%25HELIX_DUMP_FOLDER%25</XUnitLogCheckerDumpsPath>
       <XUnitLogCheckerDotnetExeInvocation Condition="'$(TargetOS)' != 'windows'">%24HELIX_CORRELATION_PAYLOAD/dotnet</XUnitLogCheckerDotnetExeInvocation>
       <XUnitLogCheckerDotnetExeInvocation Condition="'$(TargetOS)' == 'windows'">%25HELIX_CORRELATION_PAYLOAD%25\dotnet.exe</XUnitLogCheckerDotnetExeInvocation>
       <XUnitLogCheckerCommand>$(XUnitLogCheckerDotnetExeInvocation) $(XUnitLogCheckerDirectory)XUnitLogChecker.dll --dumps-path $(XUnitLogCheckerDumpsPath)</XUnitLogCheckerCommand>
     </PropertyGroup>
-    
+
+    <Message Importance="High" Text="--- DEBUG --- XUNITLOGCHECKERCOMMAND: $(XUnitLogCheckerCommand)" />
+
     <ItemGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
       <!-- Add the XUnitLogChecker's running command and store its exit code. -->
+      <HelixCommandLines Include="ls -R" />
       <HelixCommandLines Include="$(XUnitLogCheckerCommand)" />
       <HelixCommandLines Condition="'$(TargetOS)' == 'windows'" Include="set xunitlogchecker_exit_code=%25ERRORLEVEL%25" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="xunitlogchecker_exit_code=%24%3F" />
@@ -316,8 +322,8 @@
       <HelixCommandLines Condition="'$(TargetOS)' == 'windows'" Include="%25ComSpec%25 /C exit %25result_exit_code%25" />
 
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="result_exit_code=0" />
-      <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="if [ %24xunitlogchecker_exit_code -ne 0 ]%3B then result_exit_code=%24xunitlogchecker_exit_code%3B fi" />
-      <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="if [ %24test_exit_code -ne 0 ]%3B then result_exit_code=%24test_exit_code%3B fi" />
+      <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="if [ %22%24xunitlogchecker_exit_code%22 -ne %220%22 ]%3B then result_exit_code=%24xunitlogchecker_exit_code%3B fi" />
+      <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="if [ %22%24test_exit_code%22 -ne %220%22 ]%3B then result_exit_code=%24test_exit_code%3B fi" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="set_return() { return $1; }" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="set_return %24result_exit_code" />
 
@@ -328,7 +334,6 @@
       <HelixPostCommands>$(HelixPostCommands);@(HelixCommandLines)</HelixPostCommands>
     </PropertyGroup>
 
-    <Message Importance="High" Text="--- DEBUG --- XUNITLOGCHECKERCOMMAND: $(XUnitLogCheckerCommand)" />
     <Message Importance="High" Text="--- DEBUG --- HELIXPRECOMMANDS: $(HelixPreCommands)" />
     <Message Importance="High" Text="--- DEBUG --- HELIXPOSTCOMMANDS: $(HelixPostCommands)" />
 
