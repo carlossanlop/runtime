@@ -238,7 +238,10 @@
 
   <Target Name="BuildXUnitLogChecker" BeforeTargets="BuildHelixWorkItems" Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
 
-    <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
+    <PropertyGroup>
+      <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
+    </PropertyGroup>
+    
     <MSBuild Projects="$(MSBuildThisFileDirectory)../tests/Common/XUnitLogChecker/XUnitLogChecker.csproj" Targets="Restore;Build" Properties="Configuration=Release;OutDir=$(XUnitLogCheckerDirectory)" />
     
     <ItemGroup>
