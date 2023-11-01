@@ -238,7 +238,7 @@
   </PropertyGroup>
 
   <Target Name="BuildXUnitLogChecker" BeforeTargets="BuildHelixWorkItems" Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-    <MSBuild Projects="tests/Common/XUnitLogChecker/XUnitLogChecker.csproj" Targets="Build" Properties="Configuration=Release;OutDir=$(XUnitLogCheckerDirectory)" />
+    <MSBuild Projects="$(MSBuildThisFileDirectory)../tests/Common/XUnitLogChecker/XUnitLogChecker.csproj" Targets="Build" Properties="Configuration=Release;OutDir=$(XUnitLogCheckerDirectory)" />
   </Target>
 
   <!--
