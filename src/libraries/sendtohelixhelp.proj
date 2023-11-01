@@ -234,11 +234,17 @@
 
   <PropertyGroup>
     <IsTargetOSSupportedByXUnitLogChecker Condition="'$(TargetOS)' != 'browser' and '$(TargetOS)' != 'wasi' and '$(TargetOS)' != 'ios' and '$(TargetOS)' != 'iossimulator' and '$(TargetOS)' != 'tvos' and '$(TargetOS)' != 'tvossimulator' and '$(TargetOS)' != 'maccatalyst' and '$(TargetOS)' != 'android'">true</IsTargetOSSupportedByXUnitLogChecker>
-    <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
   </PropertyGroup>
 
   <Target Name="BuildXUnitLogChecker" BeforeTargets="BuildHelixWorkItems" Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
+
+    <XUnitLogCheckerDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsDir)tests/Common/XUnitLogChecker'))</XUnitLogCheckerDirectory>
     <MSBuild Projects="$(MSBuildThisFileDirectory)../tests/Common/XUnitLogChecker/XUnitLogChecker.csproj" Targets="Restore;Build" Properties="Configuration=Release;OutDir=$(XUnitLogCheckerDirectory)" />
+    
+    <ItemGroup>
+      <HelixCorrelationPayload Include="$(XUnitLogCheckerDirectory)" />
+    </ItemGroup>
+
   </Target>
 
   <!--
@@ -293,18 +299,14 @@
     </ItemGroup>
 
     <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-      <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' != 'windows'">%24HELIX_DUMP_FOLDER</XUnitLogCheckerDumpsPath>
-      <XUnitLogCheckerDumpsPath Condition="'$(TargetOS)' == 'windows'">%25HELIX_DUMP_FOLDER%25</XUnitLogCheckerDumpsPath>
-      <XUnitLogCheckerDotnetExeInvocation Condition="'$(TargetOS)' != 'windows'">%24HELIX_CORRELATION_PAYLOAD/dotnet</XUnitLogCheckerDotnetExeInvocation>
-      <XUnitLogCheckerDotnetExeInvocation Condition="'$(TargetOS)' == 'windows'">%25HELIX_CORRELATION_PAYLOAD%25\dotnet.exe</XUnitLogCheckerDotnetExeInvocation>
-      <XUnitLogCheckerCommand>$(XUnitLogCheckerDotnetExeInvocation) $(XUnitLogCheckerDirectory)XUnitLogChecker.dll --dumps-path $(XUnitLogCheckerDumpsPath)</XUnitLogCheckerCommand>
+      <XUnitLogCheckerCommand Condition="'$(TargetOS)' != 'windows'">%24HELIX_CORRELATION_PAYLOAD/dotnet %24HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll --dumps-path %24HELIX_WORKITEM_UPLOAD_ROOT</XUnitLogCheckerCommand>
+      <XUnitLogCheckerCommand Condition="'$(TargetOS)' == 'windows'">%25HELIX_CORRELATION_PAYLOAD%25\dotnet.exe %25HELIX_CORRELATION_PAYLOAD%25\XUnitLogChecker.dll --dumps-path %25HELIX_WORKITEM_UPLOAD_ROOT%25</XUnitLogCheckerCommand>
     </PropertyGroup>
 
     <Message Importance="High" Text="--- DEBUG --- XUNITLOGCHECKERCOMMAND: $(XUnitLogCheckerCommand)" />
 
     <ItemGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
       <!-- Add the XUnitLogChecker's running command and store its exit code. -->
-      <HelixCommandLines Include="ls -R" />
       <HelixCommandLines Include="$(XUnitLogCheckerCommand)" />
       <HelixCommandLines Condition="'$(TargetOS)' == 'windows'" Include="set xunitlogchecker_exit_code=%25ERRORLEVEL%25" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="xunitlogchecker_exit_code=%24%3F" />
@@ -326,16 +328,11 @@
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="if [ %22%24test_exit_code%22 -ne %220%22 ]%3B then result_exit_code=%24test_exit_code%3B fi" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="set_return() { return $1; }" />
       <HelixCommandLines Condition="'$(TargetOS)' != 'windows'" Include="set_return %24result_exit_code" />
-
-      <HelixCorrelationPayload Include="$(XUnitLogCheckerDirectory)" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(IstargetOSSupportedByXUnitLogChecker)' == 'true'">
       <HelixPostCommands>$(HelixPostCommands);@(HelixCommandLines)</HelixPostCommands>
     </PropertyGroup>
-
-    <Message Importance="High" Text="--- DEBUG --- HELIXPRECOMMANDS: $(HelixPreCommands)" />
-    <Message Importance="High" Text="--- DEBUG --- HELIXPOSTCOMMANDS: $(HelixPostCommands)" />
 
     <ItemGroup Condition="'$(EnableDefaultBuildHelixWorkItems)' == 'true'">
       <HelixCorrelationPayload Include="$(HelixCorrelationPayload)"
