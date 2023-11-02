@@ -54,13 +54,14 @@ exitcode_list[131]="SIGQUIT Ctrl-\ occurred. Core dumped."
 exitcode_list[132]="SIGILL  Illegal Instruction. Core dumped. Likely codegen issue."
 exitcode_list[133]="SIGTRAP Breakpoint hit. Core dumped."
 exitcode_list[134]="SIGABRT Abort. Managed or native assert, or runtime check such as heap corruption, caused call to abort(). Core dumped."
-exitcode_list[135]="IGBUS  Unaligned memory access. Core dumped."
+exitcode_list[135]="IGBUS   Unaligned memory access. Core dumped."
 exitcode_list[136]="SIGFPE  Bad floating point arguments. Core dumped."
 exitcode_list[137]="SIGKILL Killed eg by kill"
 exitcode_list[139]="SIGSEGV Illegal memory access. Deref invalid pointer, overrunning buffer, stack overflow etc. Core dumped."
 exitcode_list[143]="SIGTERM Terminated. Usually before SIGKILL."
 exitcode_list[159]="SIGSYS  Bad System Call."
 
+lldb_succeeded=0
 function print_info_from_core_file_using_lldb {
   local core_file_name=$1
   local executable_name=$2
@@ -79,8 +80,10 @@ function print_info_from_core_file_using_lldb {
   echo Printing managed exceptions, managed call stacks, and async state machines.
   lldb -O "settings set target.exec-search-paths $RUNTIME_PATH" -o "plugin load $plugin_path_name" -o "clrthreads -managedexception" -o "pe -nested" -o "clrstack -all -a -f" -o "dumpasync -fields -stacks -roots" -o "quit"  --core $core_file_name $executable_name
   echo ----- end ===============  lldb Output =======================================================
+  lldb_succeded=1
 }
 
+gdb_succeeded=0
 function print_info_from_core_file_using_gdb {
   local core_file_name=$1
   local executable_name=$2
@@ -94,6 +97,27 @@ function print_info_from_core_file_using_gdb {
   echo printing native stack.
   gdb --batch -ex "thread apply all bt full" -ex "quit" $executable_name $core_file_name
   echo ----- end ===============  GDB Output =======================================================
+  gdb_succeeded=1
+}
+
+function print_info_from_core_file_using_XUnitLogChecker {
+  local core_file_name=$1
+  local xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
+  local dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
+
+  if [ ! -f $dotnet_file_name ]; then
+    echo "$dotnet_file_name was not found. Unable to run XUnitLogChecker."
+    return
+  fi
+
+  if [ ! -f $xunitlogchecker_file_name ]; then 
+    echo "$xunitlogchecker_file_name was not found. Unable to print core file."
+    return
+  fi
+
+  echo ----- start ===============  XUnitLogChecker Output =====================================================
+  $dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER
+  echo ----- end ===============  XUnitLogChecker Output =======================================================
 }
 
 function print_info_from_core_file {
@@ -110,6 +134,10 @@ function print_info_from_core_file {
   echo "Printing info from core file $core_file_name"
   print_info_from_core_file_using_gdb $core_file_name $executable_name
   print_info_from_core_file_using_lldb $core_file_name $executable_name
+
+  if [ $lldb_succeeded -eq 0 ] && [ $gdb_succeeded -eq 0 ]; then
+    print_info_from_core_file_using_XUnitLogChecker $core_file_name
+  fi
 }
 
 function copy_core_file_to_temp_location {
