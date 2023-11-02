@@ -103,7 +103,7 @@ function print_info_from_core_file_using_gdb {
 function print_info_from_core_file_using_XUnitLogChecker {
   local core_file_name=$1
   local xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
-  local dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
+  local dotnet_file_name=""
 
   if [ ! -f $dotnet_file_name ]; then
     echo "$dotnet_file_name was not found. Unable to run XUnitLogChecker."
@@ -116,7 +116,9 @@ function print_info_from_core_file_using_XUnitLogChecker {
   fi
 
   echo ----- start ===============  XUnitLogChecker Output =====================================================
-  $dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER
+  cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER"
+  output=$($cmd)
+  echo "$output"
   echo ----- end ===============  XUnitLogChecker Output =======================================================
 }
 
