@@ -174,25 +174,56 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
     fi
   fi
 
-  local xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
-  local dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
+  echo cat /proc/sys/kernel/core_pattern: $(cat /proc/sys/kernel/core_pattern)
+  echo cat /proc/sys/kernel/core_uses_pid: $(cat /proc/sys/kernel/core_uses_pid)
+  echo cat /proc/sys/kernel/coredump_filter: $(cat /proc/sys/kernel/coredump_filter)
 
-  if [ ! -f $dotnet_file_name ]; then
-    echo "'$dotnet_file_name' was not found. Unable to run XUnitLogChecker."
-    return
+  echo Looking around for any Linux dumps...
+
+  # Depending on distro/configuration, the core files may either be named "core"
+  # or "core.<PID>" by default. We read /proc/sys/kernel/core_uses_pid to
+  # determine which it is.
+  core_name_uses_pid=0
+  if [[ -e /proc/sys/kernel/core_uses_pid && "1" == $(cat /proc/sys/kernel/core_uses_pid) ]]; then
+    core_name_uses_pid=1
   fi
 
-  if [ ! -f $xunitlogchecker_file_name ]; then 
-    echo "'$xunitlogchecker_file_name' was not found. Unable to print dump file contents."
-    return
+  found_dumps=0
+  if [[ "$core_name_uses_pid" == "1" ]]; then
+    # We don't know what the PID of the process was, so let's look at all core
+    # files whose name matches core.NUMBER
+    echo Looking for files matching core.* ...
+    for f in core.*; do
+      [[ $f =~ core.[0-9]+ ]] && mv "$f" "$f.dmp" && found_dumps=1
+    done
+  elif [ -f core ]; then
+    echo found a dump named core in $EXECUTION_DIR !
+    mv core core.dmp
+    found_dumps=1
+  else
+    echo ... found no dump in $PWD
   fi
 
-  echo ----- start ===============  XUnitLogChecker Output =====================================================
-  cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $EXECUTION_DIR"
-  output=$($cmd)
-  echo "$output"
-  echo ----- end ===============  XUnitLogChecker Output =======================================================
-  
+  if [ $found_dumps -eq 1 ]; then
+
+    xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
+    dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
+
+    if [ ! -f $dotnet_file_name ]; then
+      echo "'$dotnet_file_name' was not found. Unable to run XUnitLogChecker."
+      exit 1
+    elif [ ! -f $xunitlogchecker_file_name ]; then 
+      echo "'$xunitlogchecker_file_name' was not found. Unable to print dump file contents."
+      exit 1
+    fi
+
+    echo ----- start ===============  XUnitLogChecker Output =====================================================
+    cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $EXECUTION_DIR"
+    output=$($cmd)
+    echo "$output"
+    echo ----- end ===============  XUnitLogChecker Output =======================================================
+  fi
+
 fi
 popd >/dev/null
 # ======================== END Core File Inspection ==========================
