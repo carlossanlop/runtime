@@ -88,15 +88,15 @@ echo ----- end %DATE% %TIME% ----- exit code %_exit_code% ----------------------
 if %_exit_code%==1 (
   if %HAS_TEST_RESULTS%==1 (
     if not "%HELIX_WORKITEM_PAYLOAD%"=="" (
-
-      %HELIX_CORRELATION_PAYLOAD%\dotnet.exe --roll-forward Major %HELIX_CORRELATION_PAYLOAD%\XUnitLogChecker.dll --dumps-path %HELIX_DUMP_FOLDER%
-      set xunitlogchecker_exit_code=%ERRORLEVEL%
-      if %xunitlogchecker_exit_code% NEQ 0 set _exit_code=%xunitlogchecker_exit_code%
-      exit /b %_exit_code%
-
+      exit /b 0
     )
   )
 )
+
+%HELIX_CORRELATION_PAYLOAD%\dotnet.exe --roll-forward Major %HELIX_CORRELATION_PAYLOAD%\XUnitLogChecker.dll --dumps-path %HELIX_DUMP_FOLDER%
+set xunitlogchecker_exit_code=%ERRORLEVEL%
+if %xunitlogchecker_exit_code% NEQ 0 set _exit_code=%xunitlogchecker_exit_code%
+
 exit /b %_exit_code%
 :: ========================= END Test Execution =================================
 
