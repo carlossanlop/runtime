@@ -13,6 +13,7 @@ usage()
 EXECUTION_DIR=$(dirname "$0")
 RUNTIME_PATH=''
 RSP_FILE=''
+DUMP_DIR="/tmp/coredumps"
 
 while [[ $# > 0 ]]; do
   opt="$(echo "${1}" | tr "[:upper:]" "[:lower:]")"
@@ -61,6 +62,22 @@ exitcode_list[139]="SIGSEGV Illegal memory access. Deref invalid pointer, overru
 exitcode_list[143]="SIGTERM Terminated. Usually before SIGKILL."
 exitcode_list[159]="SIGSYS  Bad System Call."
 
+function move_core_file_to_temp_location {
+  local core_file_name=$1
+
+  # Create the directory (this shouldn't fail even if it already exists).
+  mkdir -p $DUMP_DIR
+
+  # Append the dmp extension to ensure XUnitLogChecker finds it
+  local new_location=$DUMP_DIR/core.$RANDOM.dmp
+
+  echo "Copying core file $core_file_name to $new_location"
+  cp $core_file_name $new_location
+
+  # Delete the old one
+  rm $core_file_name
+}
+
 # ========================= BEGIN Core File Setup ============================
 if [[ "$(uname -s)" == "Darwin" ]]; then
   # On OS X, we will enable core dump generation only if there are no core
@@ -90,6 +107,11 @@ elif [[ "$(uname -s)" == "Linux" ]]; then
 
   ulimit -c unlimited
 fi
+
+# Create the directory (this shouldn't fail even if it already exists).
+mkdir -p $DUMP_DIR
+# Delete existing dump files, if any
+rm $DUMP_DIR/*.dmp
 
 DOTNET_DbgEnableMiniDump=1
 DOTNET_EnableCrashReport=1
@@ -188,40 +210,38 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
     core_name_uses_pid=1
   fi
 
-  found_dumps=0
   if [[ "$core_name_uses_pid" == "1" ]]; then
     # We don't know what the PID of the process was, so let's look at all core
     # files whose name matches core.NUMBER
     echo Looking for files matching core.* ...
     for f in core.*; do
-      [[ $f =~ core.[0-9]+ ]] && mv "$f" "$f.dmp" && found_dumps=1
+      [[ $f =~ core.[0-9]+ ]] && move_core_file_to_temp_location "$f"
     done
   elif [ -f core ]; then
     echo found a dump named core in $EXECUTION_DIR !
-    mv core core.dmp
-    found_dumps=1
-  else
-    echo ... found no dump in $PWD
+    move_core_file_to_temp_location "core"
   fi
 
-  if [ $found_dumps -eq 1 ]; then
-
+  total_dumps=$(find $DUMP_DIR -name "*.dmp" | wc -l)
+  echo "Total dumps found in $DUMP_DIR: $total_dumps"
+  
+  if [ $total_dumps -gt 0 ]; then
+    
     xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
     dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
 
     if [ ! -f $dotnet_file_name ]; then
       echo "'$dotnet_file_name' was not found. Unable to run XUnitLogChecker."
-      exit 1
+      $test_exit_code=1
     elif [ ! -f $xunitlogchecker_file_name ]; then 
       echo "'$xunitlogchecker_file_name' was not found. Unable to print dump file contents."
-      exit 1
+      $test_exit_code=1
+    else
+      echo ----- start ===============  XUnitLogChecker Output =====================================================
+      "$dotnet_file_name" --roll-forward Major $xunitlogchecker_file_name --dumps-path $DUMP_DIR
+      $test_exit_code=$?
+      echo ----- end ===============  XUnitLogChecker Output =======================================================
     fi
-
-    echo ----- start ===============  XUnitLogChecker Output =====================================================
-    cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $EXECUTION_DIR"
-    output=$($cmd)
-    echo "$output"
-    echo ----- end ===============  XUnitLogChecker Output =======================================================
   fi
 
 fi
