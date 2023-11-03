@@ -13,7 +13,6 @@ usage()
 EXECUTION_DIR=$(dirname "$0")
 RUNTIME_PATH=''
 RSP_FILE=''
-DUMP_DIR="/tmp/coredumps"
 
 while [[ $# > 0 ]]; do
   opt="$(echo "${1}" | tr "[:upper:]" "[:lower:]")"
@@ -65,13 +64,10 @@ exitcode_list[159]="SIGSYS  Bad System Call."
 function move_core_file_to_temp_location {
   local core_file_name=$1
 
-  # Create the directory (this shouldn't fail even if it already exists).
-  mkdir -p $DUMP_DIR
-
   # Append the dmp extension to ensure XUnitLogChecker finds it
-  local new_location=$DUMP_DIR/core.$RANDOM.dmp
+  local new_location=$HELIX_DUMP_FOLDER/core.$RANDOM.dmp
 
-  echo "Copying core file $core_file_name to $new_location"
+  echo "Copying dump file '$core_file_name' to '$new_location'"
   cp $core_file_name $new_location
 
   # Delete the old one
@@ -108,14 +104,9 @@ elif [[ "$(uname -s)" == "Linux" ]]; then
   ulimit -c unlimited
 fi
 
-# Create the directory (this shouldn't fail even if it already exists).
-mkdir -p $DUMP_DIR
-# Delete existing dump files, if any
-rm $DUMP_DIR/*.dmp
-
-DOTNET_DbgEnableMiniDump=1
-DOTNET_EnableCrashReport=1
-DOTNET_DbgMiniDumpName=$EXECUTION_DIR/coredump.%d.dmp
+export DOTNET_DbgEnableMiniDump=1
+export DOTNET_EnableCrashReport=1
+export DOTNET_DbgMiniDumpName=$HELIX_DUMP_FOLDER/coredump.%d.dmp
 # ========================= END Core File Setup ==============================
 
 # ========================= BEGIN support for SuperPMI collection ==============================
@@ -213,20 +204,21 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
   if [[ "$core_name_uses_pid" == "1" ]]; then
     # We don't know what the PID of the process was, so let's look at all core
     # files whose name matches core.NUMBER
-    echo Looking for files matching core.* ...
-    for f in core.*; do
+    echo "Looking for files matching core.*"
+    for f in $(find . -name "core.*"); do
       [[ $f =~ core.[0-9]+ ]] && move_core_file_to_temp_location "$f"
     done
-  elif [ -f core ]; then
-    echo found a dump named core in $EXECUTION_DIR !
+  fi
+
+  if [ -f core ]; then
     move_core_file_to_temp_location "core"
   fi
 
-  total_dumps=$(find $DUMP_DIR -name "*.dmp" | wc -l)
-  echo "Total dumps found in $DUMP_DIR: $total_dumps"
+  total_dumps=$(find $HELIX_DUMP_FOLDER -name "*.dmp" | wc -l)
   
   if [ $total_dumps -gt 0 ]; then
     
+    echo "Total dumps found in $HELIX_DUMP_FOLDER: $total_dumps"
     xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
     dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
 
@@ -238,10 +230,12 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
       $test_exit_code=1
     else
       echo ----- start ===============  XUnitLogChecker Output =====================================================
-      "$dotnet_file_name" --roll-forward Major $xunitlogchecker_file_name --dumps-path $DUMP_DIR
+      "$dotnet_file_name" --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER
       $test_exit_code=$?
       echo ----- end ===============  XUnitLogChecker Output =======================================================
     fi
+  else
+    echo "No dumps found."
   fi
 
 fi
