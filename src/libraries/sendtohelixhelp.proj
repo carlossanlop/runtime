@@ -250,6 +250,14 @@
 
   </Target>
 
+  <ItemGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
+    <SetTestArchitecture Include="set __TestArchitecture=$(TargetArchitecture)" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
+    <HelixPreCommands>$(HelixPreCommands);$(SetTestArchitecture)</HelixPreCommands>
+  </PropertyGroup>
+
   <!--
     Create all the Helix data to start a set of jobs. Create a set of work items, one for each libraries
     test assembly. All will have the same command line. Note that this target is listed in the
