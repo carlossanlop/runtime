@@ -250,12 +250,15 @@
 
   </Target>
 
-  <ItemGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-    <SetTestArchitecture Include="set __TestArchitecture=$(TargetArchitecture)" />
-  </ItemGroup>
-
   <PropertyGroup Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true'">
-    <HelixPreCommands>$(HelixPreCommands);$(SetTestArchitecture)</HelixPreCommands>
+    <HelixPreCommands Condition="'$(TargetOS)' == 'windows'">
+      $(HelixPreCommands);
+      set __TestArchitecture=$(TargetArchitecture)
+    </HelixPreCommands>
+    <HelixPreCommands Condition="'$(TargetOS)' != 'windows'">
+      $(HelixPreCommands);
+      export __TestArchitecture=$(TargetArchitecture)
+    </HelixPreCommands>
   </PropertyGroup>
 
   <!--
