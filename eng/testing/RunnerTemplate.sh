@@ -90,6 +90,10 @@ elif [[ "$(uname -s)" == "Linux" ]]; then
 
   ulimit -c unlimited
 fi
+
+DOTNET_DbgEnableMiniDump=1
+DOTNET_EnableCrashReport=1
+DOTNET_DbgMiniDumpName=$EXECUTION_DIR/coredump.%d.dmp
 # ========================= END Core File Setup ==============================
 
 # ========================= BEGIN support for SuperPMI collection ==============================
@@ -184,7 +188,7 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
   fi
 
   echo ----- start ===============  XUnitLogChecker Output =====================================================
-  cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER"
+  cmd="$dotnet_file_name --roll-forward Major $xunitlogchecker_file_name --dumps-path $EXECUTION_DIR"
   output=$($cmd)
   echo "$output"
   echo ----- end ===============  XUnitLogChecker Output =======================================================
