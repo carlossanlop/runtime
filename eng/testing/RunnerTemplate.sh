@@ -220,7 +220,7 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
     
     echo "Total dumps found in $HELIX_DUMP_FOLDER: $total_dumps"
     xunitlogchecker_file_name="$HELIX_CORRELATION_PAYLOAD/XUnitLogChecker.dll"
-    dotnet_file_name="$HELIX_CORRELATION_PAYLOAD/dotnet"
+    dotnet_file_name="$RUNTIME_PATH/dotnet"
 
     if [ ! -f $dotnet_file_name ]; then
       echo "'$dotnet_file_name' was not found. Unable to run XUnitLogChecker."
