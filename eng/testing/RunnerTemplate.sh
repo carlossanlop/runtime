@@ -216,6 +216,7 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
 
   total_dumps=$(find $HELIX_DUMP_FOLDER -name "*.dmp" | wc -l)
   
+  echo ----- start ===============  XUnitLogChecker Output =====================================================
   if [ $total_dumps -gt 0 ]; then
     
     echo "Total dumps found in $HELIX_DUMP_FOLDER: $total_dumps"
@@ -229,14 +230,13 @@ if [[ "$(uname -s)" == "Linux" && $test_exitcode -ne 0 ]]; then
       echo "'$xunitlogchecker_file_name' was not found. Unable to print dump file contents."
       $test_exit_code=1
     else
-      echo ----- start ===============  XUnitLogChecker Output =====================================================
       "$dotnet_file_name" --roll-forward Major $xunitlogchecker_file_name --dumps-path $HELIX_DUMP_FOLDER
       $test_exit_code=$?
-      echo ----- end ===============  XUnitLogChecker Output =======================================================
     fi
   else
     echo "No dumps found."
   fi
+  echo ----- end ===============  XUnitLogChecker Output - exit code $test_exit_code ===========================
 
 fi
 popd >/dev/null
