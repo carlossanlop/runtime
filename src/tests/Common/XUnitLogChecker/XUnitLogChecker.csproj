@@ -1,10 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+<Import Project="XUnitLogChecker.targets" />
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>$(NetCoreAppToolCurrent)</TargetFramework>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TestArchiveTestsDir>$(XUnitLogCheckerLibrariesDirectory)</TestArchiveTestsDir>
   </PropertyGroup>
 
   <ItemGroup>

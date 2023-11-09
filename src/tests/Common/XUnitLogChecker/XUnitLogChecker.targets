@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <UsingTask AssemblyFile="$(RepoRoot)src\tests\Common\XUnitLogChecker\XUnitLogChecker.csproj" TaskName="Test" Override="true" />
+  <Target Name="Test">
+    <!-- This avoids attempting to run tests on this assembly because it is being included in libs.tests.
+         TODO: Build XUnitLogChecker once, in a common location for coreclr and libraries, then zip and upload it once, 
+         and then consume the same payload in both the coreclr and libraries tests. -->
+  </Target>
+
+</Project>

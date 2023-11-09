@@ -232,16 +232,21 @@
     </ItemGroup>
   </Target>
 
-  <PropertyGroup>
-    <HelixPreCommands Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true' and '$(TargetOS)' == 'windows'">
+  <PropertyGroup Condition="'$(IsXUnitLogCheckerSupported)' == 'true'">
+    <HelixPreCommands Condition="'$(TargetOS)' == 'windows'">
       $(HelixPreCommands);
-      set __TestArchitecture=$(TargetArchitecture)
+      set __TestArchitecture=$(TargetArchitecture);
+      set __TestTargetFrameworkIdentifier=$(TargetFrameworkIdentifier)
     </HelixPreCommands>
-    <HelixPreCommands Condition="'$(IsTargetOSSupportedByXUnitLogChecker)' == 'true' and '$(TargetOS)' != 'windows'">
+    <HelixPreCommands Condition="'$(TargetOS)' != 'windows'">
       $(HelixPreCommands);
       export __TestArchitecture=$(TargetArchitecture)
     </HelixPreCommands>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsXUnitLogCheckerSupported)' == 'true'">  
+    <HelixCorrelationPayload Include="$(XUnitLogCheckerLibrariesOutputDirectory)" />  
+  </ItemGroup>  
 
   <!--
     Create all the Helix data to start a set of jobs. Create a set of work items, one for each libraries
