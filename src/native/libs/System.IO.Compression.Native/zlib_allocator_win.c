@@ -7,10 +7,18 @@
 #include <winnt.h>
 #include <crtdbg.h> /* _ASSERTE */
 
-#include <string.h>
-#include <stdlib.h>
-#include <zconf.h>
-#include <zlib_allocator.h>
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT) || defined(LLVM_API_VERSION)
+    #ifdef INTERNAL_ZLIB_INTEL
+    #include <external/zlib-intel/zutil.h>
+    #else
+    #include <external/zlib/zutil.h>
+    #endif // INTERNAL_ZLIB_INTEL
+#else
+    #include <string.h>
+    #include <stdlib.h>
+    #include <zconf.h>
+    #include <zlib_allocator.h>
+#endif
 
 /* A custom allocator for zlib that provides some defense-in-depth over standard malloc / free.
  * (Windows-specific version)
@@ -91,7 +99,11 @@ typedef struct _DOTNET_ALLOC_COOKIE
 const SIZE_T DOTNET_ALLOC_HEADER_COOKIE_SIZE_WITH_PADDING = (sizeof(DOTNET_ALLOC_COOKIE) + MEMORY_ALLOCATION_ALIGNMENT - 1) & ~((SIZE_T)MEMORY_ALLOCATION_ALIGNMENT  - 1);
 const SIZE_T DOTNET_ALLOC_TRAILER_COOKIE_SIZE = sizeof(DOTNET_ALLOC_COOKIE);
 
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT) || defined(LLVM_API_VERSION)
+voidpf ZLIB_INTERNAL zcalloc(opaque, items, size)
+#else
 voidpf z_custom_calloc(opaque, items, size)
+#endif
     voidpf opaque;
     unsigned items;
     unsigned size;
@@ -149,7 +161,11 @@ void zcfree_cookie_check_failed()
     __fastfail(FAST_FAIL_HEAP_METADATA_CORRUPTION);
 }
 
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT) || defined(LLVM_API_VERSION)
+void zcfree(opaque, ptr)
+#else
 void z_custom_cfree(opaque, ptr)
+#endif
     voidpf opaque;
     voidpf ptr;
 {

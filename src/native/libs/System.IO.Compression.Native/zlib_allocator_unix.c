@@ -3,10 +3,14 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <zconf.h>
-#include <zlib_allocator.h>
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT)
+    #include <external/zlib/zutil.h>
+#else
+    #include <string.h>
+    #include <stdlib.h>
+    #include <zconf.h>
+    #include <zlib_allocator.h>
+#endif
 
 /* A custom allocator for zlib that provides some defense-in-depth over standard malloc / free.
  * (non-Windows version)
@@ -73,7 +77,11 @@ static void WriteAllocCookieUnaligned(void* pDest, DOTNET_ALLOC_COOKIE vCookie)
 const size_t DOTNET_ALLOC_HEADER_COOKIE_SIZE_WITH_PADDING = (sizeof(DOTNET_ALLOC_COOKIE) + MEMORY_ALLOCATION_ALIGNMENT - 1) & ~((size_t)MEMORY_ALLOCATION_ALIGNMENT  - 1);
 const size_t DOTNET_ALLOC_TRAILER_COOKIE_SIZE = sizeof(DOTNET_ALLOC_COOKIE);
 
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT)
+voidpf zcalloc(opaque, items, size)
+#else
 voidpf z_custom_calloc(opaque, items, size)
+#endif
     voidpf opaque;
     unsigned items;
     unsigned size;
@@ -122,7 +130,11 @@ static void zcfree_trash_cookie(void* pCookie)
     memset(pCookie, 0, sizeof(DOTNET_ALLOC_COOKIE));
 }
 
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM) || defined(MONO_DLL_EXPORT)
+void zcfree(opaque, ptr)
+#else
 void z_custom_cfree(opaque, ptr)
+#endif
     voidpf opaque;
     voidpf ptr;
 {

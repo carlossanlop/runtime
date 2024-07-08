@@ -5,14 +5,34 @@
 #include <stdlib.h>
 #include "pal_zlib.h"
 
-#ifdef _WIN32
-    #define c_static_assert(e) static_assert((e),"")
-    #include "../Common/pal_utilities.h"
+#if defined(TEMP_USE_OLD_ZLIB) || defined(CLR_CMAKE_RUNTIME_MONO) || defined(TARGET_BROWSER) || defined(TARGET_WASM)
+
+    #ifdef INTERNAL_ZLIB
+        #ifdef _WIN32
+            #define c_static_assert(e) static_assert((e),"")
+        #endif
+        #ifdef INTERNAL_ZLIB_INTEL
+            #include <external/zlib-intel/zlib.h>
+        #else
+            #include <external/zlib/zlib.h>
+        #endif
+    #else
+        #include "../Common/pal_utilities.h"
+        #include <zlib.h>
+    #endif
+
 #else
-    #include "pal_utilities.h"
+
+    #ifdef _WIN32
+        #define c_static_assert(e) static_assert((e),"")
+        #include "../Common/pal_utilities.h"
+    #else
+        #include "../Common/pal_utilities.h"
+    #endif
+    #include <zlib_allocator.h>
+    #include <zlib.h>
+
 #endif
-#include <zlib_allocator.h>
-#include <zlib.h>
 
 c_static_assert(PAL_Z_NOFLUSH == Z_NO_FLUSH);
 c_static_assert(PAL_Z_FINISH == Z_FINISH);
@@ -40,8 +60,10 @@ static int32_t Init(PAL_ZStream* stream)
 {
     z_stream* zStream = (z_stream*)calloc(1, sizeof(z_stream));
 
+#if !defined(TEMP_USE_OLD_ZLIB) && !defined(CLR_CMAKE_RUNTIME_MONO) && !defined(TARGET_BROWSER) && !defined(TARGET_WASM)
     zStream->zalloc = z_custom_calloc;
     zStream->zfree = z_custom_cfree;
+#endif
 
     stream->internalState = zStream;
 
