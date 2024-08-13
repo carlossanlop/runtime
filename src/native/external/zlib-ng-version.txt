@@ -9,4 +9,6 @@ We have removed the following folders from our local copy as these files are not
 - zlib-ng/test/
 - zlib-ng/arch/s390/self-hosted-builder/
 
-Also apply https://github.com/dotnet/runtime/commit/ecdb625035e0e3fb7c51e908713d96d2cb2080c8.patch or cherry-pick ecdb625035e0e3fb7c51e908713d96d2cb2080c8 directly.
+Also apply:
+- https://github.com/dotnet/runtime/commit/ecdb625035e0e3fb7c51e908713d96d2cb2080c8.patch or cherry-pick ecdb625035e0e3fb7c51e908713d96d2cb2080c8 directly.
+- https://github.com/dotnet/runtime/pull/105771/commits/d1850db0841ba80d4624df401fc89aa29ede8693.patch or cherry-pick d1850db0841ba80d4624df401fc89aa29ede8693 directly.
