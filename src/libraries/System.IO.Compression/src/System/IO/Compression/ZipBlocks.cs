@@ -366,7 +366,6 @@ namespace System.IO.Compression
             if (_startDiskNumber != null)
             {
                 BinaryPrimitives.WriteUInt32LittleEndian(extraFieldData[startOffset..], _startDiskNumber.Value);
-                startOffset += FieldLengths.StartDiskNumber;
             }
 
             stream.Write(extraFieldData);
@@ -377,7 +376,7 @@ namespace System.IO.Compression
     {
         // The Zip File Format Specification references 0x07064B50, this is a big endian representation.
         // ZIP files store values in little endian, so this is reversed.
-        public static ReadOnlySpan<byte> SignatureConstantBytes => [0x50, 0x4B, 0x06, 0x07];
+        public static readonly byte[] SignatureConstantBytes = [0x50, 0x4B, 0x06, 0x07];
 
         public static readonly int TotalSize = FieldLocations.TotalNumberOfDisks + FieldLengths.TotalNumberOfDisks;
         public static readonly int SizeOfBlockWithoutSignature = TotalSize - FieldLengths.Signature;
@@ -747,7 +746,7 @@ namespace System.IO.Compression
     {
         // The Zip File Format Specification references 0x06054B50, this is a big endian representation.
         // ZIP files store values in little endian, so this is reversed.
-        public static ReadOnlySpan<byte> SignatureConstantBytes => [0x50, 0x4B, 0x05, 0x06];
+        public static readonly byte[] SignatureConstantBytes = [0x50, 0x4B, 0x05, 0x06];
 
         // This also assumes a zero-length comment.
         public static readonly int TotalSize = FieldLocations.ArchiveCommentLength + FieldLengths.ArchiveCommentLength;
