@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Compression;
 
-public partial class ZipArchive : IAsyncDisposable
+public partial class ZipArchive : IDisposable, IAsyncDisposable
 {
     // This would be the counterpart of the Entries synchronous property.
     public async Task<ReadOnlyCollection<ZipArchiveEntry>> GetEntriesAsync(CancellationToken cancellationToken)

@@ -12,7 +12,7 @@ using System.Text;
 
 namespace System.IO.Compression
 {
-    public partial class ZipArchive : IDisposable
+    public partial class ZipArchive : IDisposable, IAsyncDisposable
     {
         private readonly Stream _archiveStream;
         private ZipArchiveEntry? _archiveStreamOwner;
