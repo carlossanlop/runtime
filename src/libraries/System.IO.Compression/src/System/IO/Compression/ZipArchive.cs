@@ -8,12 +8,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace System.IO.Compression
 {
-    public class ZipArchive : IDisposable
+    public partial class ZipArchive : IDisposable
     {
         private readonly Stream _archiveStream;
         private ZipArchiveEntry? _archiveStreamOwner;
@@ -727,7 +726,7 @@ namespace System.IO.Compression
                         {
                             // Keep track of the expected position of the file entry after the final untouched file entry so that when the loop completes,
                             // we'll know which position to start writing new entries from.
-                            nextFileOffset = Math.Max(nextFileOffset, entry.OffsetOfCompressedData + entry.CompressedLength);
+                            nextFileOffset = Math.Max(nextFileOffset, entry.GetOffsetOfCompressedData() + entry.CompressedLength);
                         }
                         // When calculating the starting offset to load the files from, only look at changed entries which are already in the archive.
                         else

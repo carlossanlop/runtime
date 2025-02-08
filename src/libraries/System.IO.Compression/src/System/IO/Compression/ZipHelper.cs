@@ -7,7 +7,7 @@ using System.Text;
 
 namespace System.IO.Compression
 {
-    internal static class ZipHelper
+    internal static partial class ZipHelper
     {
         internal const uint Mask32Bit = 0xFFFFFFFF;
         internal const ushort Mask16Bit = 0xFFFF;
