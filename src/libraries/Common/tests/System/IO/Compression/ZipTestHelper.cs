@@ -307,7 +307,7 @@ namespace System.IO.Compression.Tests
             }
         }
 
-        private static string FlipSlashes(string name)
+        internal static string FlipSlashes(string name)
         {
             Debug.Assert(!(name.Contains("\\") && name.Contains("/")));
             return
@@ -533,7 +533,7 @@ namespace System.IO.Compression.Tests
             foreach (object[] e in Latin1Comment_Data())
             {
                 byte[] expectedBytes = Encoding.Latin1.GetBytes(e[1] as string);
-                
+
                 yield return new object[] { e[0], e[1], Encoding.UTF8.GetString(expectedBytes) };
             }
         }

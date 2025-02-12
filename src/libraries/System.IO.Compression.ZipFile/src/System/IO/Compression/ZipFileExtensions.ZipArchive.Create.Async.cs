@@ -108,7 +108,7 @@ public static partial class ZipFileExtensions
 
             SetExternalAttributes(fs, entry);
 
-            Stream es = await entry.OpenAsync().ConfigureAwait(false);
+            Stream es = await entry.OpenAsync(cancellationToken).ConfigureAwait(false);
             await using (es)
             {
                 await fs.CopyToAsync(es, cancellationToken).ConfigureAwait(false);

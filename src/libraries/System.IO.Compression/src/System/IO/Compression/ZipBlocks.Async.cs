@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 namespace System.IO.Compression;
 
 // TODO: We might have to use classes for ZipBlocks in async code, as structs don't play well with async code.
+// TODO: Use Array pool instead of new byte[]
 
 internal partial struct ZipGenericExtraField
 {

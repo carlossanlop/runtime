@@ -450,7 +450,7 @@ public static partial class ZipFile
         sourceDirectoryName = Path.GetFullPath(sourceDirectoryName);
         destinationArchiveFileName = Path.GetFullPath(destinationArchiveFileName);
 
-        ZipArchive archive = await OpenAsync(destinationArchiveFileName, ZipArchiveMode.Create, entryNameEncoding, cancellationToken).ConfigureAwait(false);
+        ZipArchive archive = await OpenAsync(destinationArchiveFileName, ZipArchiveMode.Create, entryNameEncoding).ConfigureAwait(false);
         await using (archive)
         {
             await CreateZipArchiveFromDirectoryAsync(sourceDirectoryName, archive, compressionLevel, includeBaseDirectory, cancellationToken).ConfigureAwait(false);

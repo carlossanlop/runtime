@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -165,6 +166,119 @@ namespace System.IO.Compression.Tests
                         Assert.NotEqual(0, entry.ExternalAttributes);
                     }
                 }
+            }
+        }
+    }
+
+    public class ZipFile_Create_Async : ZipFileTestBase
+    {
+        [Fact]
+        public async Task CreateFromDirectoryNormal()
+        {
+            string folderName = zfolder("normal");
+            string directory = GetTestFilePath();
+            CancellationToken ct = CancellationToken.None;
+            await ZipFile.CreateFromDirectoryAsync(folderName, directory, ct);
+            var mode = ZipArchiveMode.Read;
+            bool checkTimes = false;
+            bool requireExplicit = false;
+
+            var archiveFile = await StreamHelpers.CreateTempCopyStream(folderName);
+            int count = 0;
+
+            await using (ZipArchive archive = new ZipArchive(archiveFile, mode))
+            {
+                List<FileData> files = FileData.InPath(directory);
+                Assert.All<FileData>(files, async (file) => {
+                    count++;
+                    string entryName = file.FullName;
+                    if (file.IsFolder)
+                        entryName += Path.DirectorySeparatorChar;
+                    ZipArchiveEntry entry = await archive.GetEntryAsync(entryName, ct);
+                    if (entry == null)
+                    {
+                        entryName = FlipSlashes(entryName);
+                        entry = await archive.GetEntryAsync(entryName, ct);
+                    }
+                    if (file.IsFile)
+                    {
+                        Assert.NotNull(entry);
+                        long givenLength = entry.Length;
+
+                        var buffer = new byte[entry.Length];
+                        await using (Stream entrystream = await entry.OpenAsync(ct))
+                        {
+                            ReadAllBytes(entrystream, buffer, 0, buffer.Length);
+#if NET
+                            uint zipcrc = entry.Crc32;
+                            Assert.Equal(CRC.CalculateCRC(buffer), zipcrc);
+#endif
+
+                            if (file.Length != givenLength)
+                            {
+                                buffer = NormalizeLineEndings(buffer);
+                            }
+
+                            Assert.Equal(file.Length, buffer.Length);
+                            ulong crc = CRC.CalculateCRC(buffer);
+                            Assert.Equal(file.CRC, crc.ToString());
+                        }
+
+                        if (checkTimes)
+                        {
+                            const int zipTimestampResolution = 2; // Zip follows the FAT timestamp resolution of two seconds for file records
+                            DateTime lower = file.LastModifiedDate.AddSeconds(-zipTimestampResolution);
+                            DateTime upper = file.LastModifiedDate.AddSeconds(zipTimestampResolution);
+                            Assert.InRange(entry.LastWriteTime.Ticks, lower.Ticks, upper.Ticks);
+                        }
+
+                        Assert.Equal(file.Name, entry.Name);
+                        Assert.Equal(entryName, entry.FullName);
+                        Assert.Equal(entryName, entry.ToString());
+                        Assert.Equal(archive, entry.Archive);
+                    }
+                    else if (file.IsFolder)
+                    {
+                        if (entry == null) //entry not found
+                        {
+                            string entryNameOtherSlash = FlipSlashes(entryName);
+                            bool isEmpty = !files.Any(
+                                f => f.IsFile &&
+                                     (f.FullName.StartsWith(entryName, StringComparison.OrdinalIgnoreCase) ||
+                                      f.FullName.StartsWith(entryNameOtherSlash, StringComparison.OrdinalIgnoreCase)));
+                            if (requireExplicit || isEmpty)
+                            {
+                                Assert.Contains("emptydir", entryName);
+                            }
+
+                            if ((!requireExplicit && !isEmpty) || entryName.Contains("emptydir"))
+                                count--; //discount this entry
+                        }
+                        else
+                        {
+                            await using (Stream es = await entry.OpenAsync(ct))
+                            {
+                                try
+                                {
+                                    Assert.Equal(0, es.Length);
+                                }
+                                catch (NotSupportedException)
+                                {
+                                    try
+                                    {
+                                        Assert.Equal(-1, es.ReadByte());
+                                    }
+                                    catch (Exception)
+                                    {
+                                        Console.WriteLine("Didn't return EOF");
+                                        throw;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                Assert.Equal(count, archive.Entries.Count);
             }
         }
     }

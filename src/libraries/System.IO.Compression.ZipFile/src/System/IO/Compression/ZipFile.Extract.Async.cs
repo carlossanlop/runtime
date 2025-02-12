@@ -188,7 +188,7 @@ public static partial class ZipFile
     {
         ArgumentNullException.ThrowIfNull(sourceArchiveFileName);
 
-        ZipArchive archive = await OpenAsync(sourceArchiveFileName, ZipArchiveMode.Read, entryNameEncoding, cancellationToken).ConfigureAwait(false);
+        ZipArchive archive = await OpenAsync(sourceArchiveFileName, ZipArchiveMode.Read, entryNameEncoding).ConfigureAwait(false);
         await using (archive)
         {
             await archive.ExtractToDirectoryAsync(destinationDirectoryName, overwriteFiles, cancellationToken).ConfigureAwait(false);
