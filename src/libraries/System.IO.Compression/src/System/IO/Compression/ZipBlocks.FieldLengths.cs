@@ -3,7 +3,7 @@
 
 namespace System.IO.Compression
 {
-    internal partial struct ZipGenericExtraField
+    internal sealed partial class ZipGenericExtraField
     {
         private static class FieldLengths
         {
@@ -12,7 +12,7 @@ namespace System.IO.Compression
         }
     }
 
-    internal partial struct Zip64ExtraField
+    internal sealed partial class Zip64ExtraField
     {
         internal static class FieldLengths
         {
@@ -23,7 +23,7 @@ namespace System.IO.Compression
         }
     }
 
-    internal partial struct Zip64EndOfCentralDirectoryLocator
+    internal sealed partial class Zip64EndOfCentralDirectoryLocator
     {
         internal static class FieldLengths
         {
@@ -34,8 +34,8 @@ namespace System.IO.Compression
         }
     }
 
-    internal partial struct Zip64EndOfCentralDirectoryRecord
-    {
+    internal sealed partial class Zip64EndOfCentralDirectoryRecord
+        {
         private static class FieldLengths
         {
             public static readonly int Signature = SignatureConstantBytes.Length;
@@ -51,7 +51,7 @@ namespace System.IO.Compression
         }
     }
 
-    internal readonly partial struct ZipLocalFileHeader
+    internal sealed partial class ZipLocalFileHeader
     {
         internal static class FieldLengths
         {
@@ -90,7 +90,7 @@ namespace System.IO.Compression
         }
     }
 
-    internal partial struct ZipCentralDirectoryFileHeader
+    internal sealed partial class ZipCentralDirectoryFileHeader
     {
         internal static class FieldLengths
         {
@@ -114,8 +114,8 @@ namespace System.IO.Compression
         }
     }
 
-    internal partial struct ZipEndOfCentralDirectoryBlock
-    {
+    internal sealed partial class ZipEndOfCentralDirectoryBlock
+        {
         internal static class FieldLengths
         {
             public static readonly int Signature = SignatureConstantBytes.Length;

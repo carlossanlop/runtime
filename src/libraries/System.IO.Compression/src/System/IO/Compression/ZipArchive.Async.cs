@@ -161,7 +161,7 @@ public partial class ZipArchive : IDisposable, IAsyncDisposable
                 while (continueReadingCentralDirectory
                     && currPosition + ZipCentralDirectoryFileHeader.BlockConstantSectionSize < sizedFileBuffer.Length)
                 {
-                    ZipCentralDirectoryFileHeader currentHeader = default;
+                    ZipCentralDirectoryFileHeader currentHeader = new();
 
                     if (continueReadingCentralDirectory)
                     {

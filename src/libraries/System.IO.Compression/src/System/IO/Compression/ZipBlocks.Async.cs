@@ -9,10 +9,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Compression;
 
-// TODO: We might have to use classes for ZipBlocks in async code, as structs don't play well with async code.
-// TODO: Use Array pool instead of new byte[]
-
-internal partial struct ZipGenericExtraField
+internal sealed partial class ZipGenericExtraField
 {
     public async Task WriteBlockAsync(Stream stream, CancellationToken cancellationToken)
     {
@@ -34,7 +31,7 @@ internal partial struct ZipGenericExtraField
     }
 }
 
-internal partial struct Zip64ExtraField
+internal sealed partial class Zip64ExtraField
 {
     public async Task WriteBlockAsync(Stream stream, CancellationToken cancellationToken)
     {
@@ -71,11 +68,11 @@ internal partial struct Zip64ExtraField
     }
 }
 
-internal partial struct Zip64EndOfCentralDirectoryLocator
+internal sealed partial class Zip64EndOfCentralDirectoryLocator
 {
     public static async Task<(bool, Zip64EndOfCentralDirectoryLocator)> TryReadBlockAsync(Stream stream, CancellationToken cancellationToken)
     {
-        Zip64EndOfCentralDirectoryLocator zip64EOCDLocator = default;
+        Zip64EndOfCentralDirectoryLocator zip64EOCDLocator = new();
         byte[] blockContents = new byte[TotalSize];
         int bytesRead;
 
@@ -113,11 +110,11 @@ internal partial struct Zip64EndOfCentralDirectoryLocator
     }
 }
 
-internal partial struct Zip64EndOfCentralDirectoryRecord
+internal sealed partial class Zip64EndOfCentralDirectoryRecord
 {
     public static async Task<(bool, Zip64EndOfCentralDirectoryRecord)> TryReadBlockAsync(Stream stream, CancellationToken cancellationToken)
     {
-        Zip64EndOfCentralDirectoryRecord zip64EOCDRecord = default;
+        Zip64EndOfCentralDirectoryRecord zip64EOCDRecord = new();
 
         byte[] blockContents = new byte[BlockConstantSectionSize];
         int bytesRead;
@@ -173,7 +170,7 @@ internal partial struct Zip64EndOfCentralDirectoryRecord
     }
 }
 
-internal readonly partial struct ZipLocalFileHeader
+internal sealed partial class ZipLocalFileHeader
 {
     public static async Task<List<ZipGenericExtraField>> GetExtraFieldsAsync(Stream stream, CancellationToken cancellationToken)
     {
@@ -249,7 +246,7 @@ internal readonly partial struct ZipLocalFileHeader
     }
 }
 
-internal partial struct ZipCentralDirectoryFileHeader
+internal sealed partial class ZipCentralDirectoryFileHeader
 {
     // if saveExtraFieldsAndComments is false, FileComment and ExtraFields will be null
     // in either case, the zip64 extra field info will be incorporated into other fields
@@ -257,7 +254,7 @@ internal partial struct ZipCentralDirectoryFileHeader
     {
         const int StackAllocationThreshold = 512;
 
-        ZipCentralDirectoryFileHeader header = default;
+        ZipCentralDirectoryFileHeader header = new();
         int bytesRead = 0;
 
         ReadOnlySpan<byte> buffer = memory.Span;
@@ -338,7 +335,7 @@ internal partial struct ZipCentralDirectoryFileHeader
 
             ReadOnlySpan<byte> zipExtraFields = dynamicHeader.Slice(header.FilenameLength, header.ExtraFieldLength);
 
-            zip64 = default;
+            zip64 = new();
             if (saveExtraFieldsAndComments)
             {
                 header.ExtraFields = ZipGenericExtraField.ParseExtraField(zipExtraFields);
@@ -375,7 +372,7 @@ internal partial struct ZipCentralDirectoryFileHeader
     }
 }
 
-internal partial struct ZipEndOfCentralDirectoryBlock
+internal sealed partial class ZipEndOfCentralDirectoryBlock
 {
     public static async Task WriteBlockAsync(Stream stream, long numberOfEntries, long startOfCentralDirectory, long sizeOfCentralDirectory, byte[] archiveComment, CancellationToken cancellationToken)
     {
@@ -415,7 +412,7 @@ internal partial struct ZipEndOfCentralDirectoryBlock
 
     public static async Task<(bool, ZipEndOfCentralDirectoryBlock)> TryReadBlockAsync(Stream stream, CancellationToken cancellationToken)
     {
-        ZipEndOfCentralDirectoryBlock eocdBlock = default;
+        ZipEndOfCentralDirectoryBlock eocdBlock = new();
         byte[] blockContents = new byte[TotalSize];
         int bytesRead;
 
