@@ -13,6 +13,16 @@ namespace System.IO.Compression.Tests
     public class ZipFile_Create : ZipFileTestBase
     {
         [Fact]
+        public async Task Async()
+        {
+            string folderName = zfolder("normal");
+            string noBaseDir = GetTestFilePath();
+            await ZipFile.CreateFromDirectoryAsync(folderName, noBaseDir, CancellationToken.None);
+
+            await IsZipSameAsDirAsyncAsync(noBaseDir, folderName, ZipArchiveMode.Read, requireExplicit: false, checkTimes: false, CancellationToken.None);
+        }
+
+        [Fact]
         public async Task CreateFromDirectoryNormal()
         {
             string folderName = zfolder("normal");

@@ -3,6 +3,7 @@
 
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -10,6 +11,21 @@ namespace System.IO.Compression.Tests
 {
     public class zip_ReadTests : ZipFileTestBase
     {
+        [Theory]
+        [InlineData("normal.zip", "normal")]
+        public static Task ReadAsync(string zipFile, string zipFolder)
+        {
+            // while (!Diagnostics.Debugger.IsAttached)
+            // {
+            //     Console.WriteLine($"Attach to {Environment.ProcessId}");
+            //     Thread.Sleep(1000);
+            // }
+            // Console.WriteLine("Attached!");
+            // Diagnostics.Debugger.Break();
+
+            return IsZipSameAsDirAsyncAsync(zfile(zipFile), zfolder(zipFolder), ZipArchiveMode.Read, CancellationToken.None);
+        }
+
         [Theory]
         [InlineData("normal.zip", "normal")]
         [InlineData("fake64.zip", "small")]

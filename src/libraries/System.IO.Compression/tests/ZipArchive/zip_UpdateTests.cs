@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -11,6 +12,22 @@ namespace System.IO.Compression.Tests
 {
     public partial class zip_UpdateTests : ZipFileTestBase
     {
+        [Theory]
+        [InlineData("normal.zip", "normal")]
+        public static async Task ReadAsync(string zipFile, string zipFolder)
+        {
+            // while (!Diagnostics.Debugger.IsAttached)
+            // {
+            //     Console.WriteLine($"Attach to {Environment.ProcessId}");
+            //     Thread.Sleep(1000);
+            // }
+            // Console.WriteLine("Attached!");
+            // Diagnostics.Debugger.Break();
+
+
+            await IsZipSameAsDirAsync(await StreamHelpers.CreateTempCopyStream(zfile(zipFile)), zfolder(zipFolder), ZipArchiveMode.Update, requireExplicit: true, checkTimes: true, CancellationToken.None);
+        }
+
         [Theory]
         [InlineData("normal.zip", "normal")]
         [InlineData("fake64.zip", "small")]

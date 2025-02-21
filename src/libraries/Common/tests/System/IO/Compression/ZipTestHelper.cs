@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -81,6 +82,17 @@ namespace System.IO.Compression.Tests
             int bytesRead;
             int totalRead = 0;
             while ((bytesRead = stream.Read(buffer, offset + totalRead, count - totalRead)) != 0)
+            {
+                totalRead += bytesRead;
+            }
+            return totalRead;
+        }
+
+        public static async Task<int> ReadAllBytesAsync(Stream stream, byte[] buffer, int offset, int count, CancellationToken ct)
+        {
+            int bytesRead;
+            int totalRead = 0;
+            while ((bytesRead = await stream.ReadAsync(buffer, offset + totalRead, count - totalRead, ct)) != 0)
             {
                 totalRead += bytesRead;
             }
@@ -199,12 +211,124 @@ namespace System.IO.Compression.Tests
             IsZipSameAsDir(s, directory, mode, requireExplicit, checkTimes);
         }
 
+        public static async Task IsZipSameAsDirAsyncAsync(string archiveFile, string directory, ZipArchiveMode mode, CancellationToken ct)
+        {
+            await IsZipSameAsDirAsyncAsync(archiveFile, directory, mode, requireExplicit: false, checkTimes: false, ct);
+        }
+
+        public static async Task IsZipSameAsDirAsyncAsync(string archiveFile, string directory, ZipArchiveMode mode, bool requireExplicit, bool checkTimes, CancellationToken ct)
+        {
+            var s = await StreamHelpers.CreateTempCopyStream(archiveFile);
+            await IsZipSameAsDirAsync(s, directory, mode, requireExplicit, checkTimes, ct);
+        }
+
         public static byte[] NormalizeLineEndings(byte[] str)
         {
             string rep = Text.Encoding.Default.GetString(str);
             rep = rep.Replace("\r\n", "\n");
             rep = rep.Replace("\n", "\r\n");
             return Text.Encoding.Default.GetBytes(rep);
+        }
+
+        public static async Task IsZipSameAsDirAsync(Stream archiveFile, string directory, ZipArchiveMode mode, bool requireExplicit, bool checkTimes, CancellationToken ct)
+        {
+            int count = 0;
+
+            await using (ZipArchive archive = new ZipArchive(archiveFile, mode))
+            {
+                List<FileData> files = FileData.InPath(directory);
+                Assert.All<FileData>(files, async (file) =>
+                {
+                    count++;
+                    string entryName = file.FullName;
+                    if (file.IsFolder)
+                        entryName += Path.DirectorySeparatorChar;
+                    ZipArchiveEntry entry = await archive.GetEntryAsync(entryName, ct);
+                    if (entry == null)
+                    {
+                        entryName = FlipSlashes(entryName);
+                        entry = await archive.GetEntryAsync(entryName, ct);
+                    }
+                    if (file.IsFile)
+                    {
+                        Assert.NotNull(entry);
+                        long givenLength = entry.Length;
+
+                        var buffer = new byte[entry.Length];
+                        await using (Stream entrystream = await entry.OpenAsync(ct))
+                        {
+                            await ReadAllBytesAsync(entrystream, buffer, 0, buffer.Length, ct);
+#if NET
+                            uint zipcrc = entry.Crc32;
+                            Assert.Equal(CRC.CalculateCRC(buffer), zipcrc);
+#endif
+
+                            if (file.Length != givenLength)
+                            {
+                                buffer = NormalizeLineEndings(buffer);
+                            }
+
+                            Assert.Equal(file.Length, buffer.Length);
+                            ulong crc = CRC.CalculateCRC(buffer);
+                            Assert.Equal(file.CRC, crc.ToString());
+                        }
+
+                        if (checkTimes)
+                        {
+                            const int zipTimestampResolution = 2; // Zip follows the FAT timestamp resolution of two seconds for file records
+                            DateTime lower = file.LastModifiedDate.AddSeconds(-zipTimestampResolution);
+                            DateTime upper = file.LastModifiedDate.AddSeconds(zipTimestampResolution);
+                            Assert.InRange(entry.LastWriteTime.Ticks, lower.Ticks, upper.Ticks);
+                        }
+
+                        Assert.Equal(file.Name, entry.Name);
+                        Assert.Equal(entryName, entry.FullName);
+                        Assert.Equal(entryName, entry.ToString());
+                        Assert.Equal(archive, entry.Archive);
+                    }
+                    else if (file.IsFolder)
+                    {
+                        if (entry == null) //entry not found
+                        {
+                            string entryNameOtherSlash = FlipSlashes(entryName);
+                            bool isEmpty = !files.Any(
+                                f => f.IsFile &&
+                                     (f.FullName.StartsWith(entryName, StringComparison.OrdinalIgnoreCase) ||
+                                      f.FullName.StartsWith(entryNameOtherSlash, StringComparison.OrdinalIgnoreCase)));
+                            if (requireExplicit || isEmpty)
+                            {
+                                Assert.Contains("emptydir", entryName);
+                            }
+
+                            if ((!requireExplicit && !isEmpty) || entryName.Contains("emptydir"))
+                                count--; //discount this entry
+                        }
+                        else
+                        {
+                            await using (Stream es = await entry.OpenAsync(ct))
+                            {
+                                try
+                                {
+                                    Assert.Equal(0, es.Length);
+                                }
+                                catch (NotSupportedException)
+                                {
+                                    try
+                                    {
+                                        Assert.Equal(-1, await es.ReadByteAsync(ct));
+                                    }
+                                    catch (Exception)
+                                    {
+                                        Console.WriteLine("Didn't return EOF");
+                                        throw;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                Assert.Equal(count, archive.Entries.Count);
+            }
         }
 
         public static void IsZipSameAsDir(Stream archiveFile, string directory, ZipArchiveMode mode, bool requireExplicit, bool checkTimes)

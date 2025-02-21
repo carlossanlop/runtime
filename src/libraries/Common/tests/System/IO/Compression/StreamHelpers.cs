@@ -3,16 +3,17 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 public static partial class StreamHelpers
 {
-    public static async Task<MemoryStream> CreateTempCopyStream(string path)
+    public static async Task<MemoryStream> CreateTempCopyStream(string path, CancellationToken ct = default)
     {
         var bytes = File.ReadAllBytes(path);
 
         var ms = new MemoryStream();
-        await ms.WriteAsync(bytes, 0, bytes.Length);
+        await ms.WriteAsync(bytes, 0, bytes.Length, ct);
         ms.Position = 0;
 
         return ms;
