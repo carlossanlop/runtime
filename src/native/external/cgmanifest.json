@@ -56,6 +56,16 @@
       "component": {
         "type": "git",
         "git": {
+          "repositoryUrl": "https://github.com/facebook/zstd",
+          "commitHash": "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
+        }
+      },
+      "developmentDependency": false
+    },
+    {
+      "component": {
+        "type": "git",
+        "git": {
           "repositoryUrl": "https://github.com/microsoft/LinuxTracepoints",
           "commitHash": "a817b91dfb08b2929ec6d48a211644e3394bf1c7"
         }
